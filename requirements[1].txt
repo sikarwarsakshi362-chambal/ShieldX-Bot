@@ -1,5 +1,0 @@
-pyrogram
-tgcrypto
-aiohttp
-requests
-Pillow
