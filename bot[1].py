@@ -1,25 +1,37 @@
 import os
+import time
 from pyrogram import Client, filters
 
-# Load credentials from environment variables (set these in Koyeb)
-API_ID = int(os.environ.get("API_ID") or 0)
+# Environment Variables (Render/Koyeb से auto-load होंगे)
+API_ID = int(os.environ.get("API_ID", 0))
 API_HASH = os.environ.get("API_HASH")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 if not API_ID or not API_HASH or not BOT_TOKEN:
-    print("ERROR: API_ID, API_HASH or BOT_TOKEN not set in environment.")
-    raise SystemExit(1)
+    print("❌ ERROR: Missing API_ID / API_HASH / BOT_TOKEN in environment.")
+    exit(1)
 
-app = Client("shieldx", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+# Pyrogram client
+app = Client("shieldx_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 @app.on_message(filters.command("start"))
 async def start(_, msg):
     await msg.reply_text(
-        "🛡️ *Welcome to ShieldX Media Protector Bot!*\n\n"
-        "✅ Automatically removes spam, NSFW & abusive content.\n"
-        "👮 Add me as admin in your group to activate protection.",
+        "🤖 *ShieldX Media Protector Bot is Active!*\n\n"
+        "✅ Protects your groups from NSFW, spam & abuse.\n"
+        "💬 Use /help to see more commands.\n"
+        "🔒 Add me as admin in your group to activate protection.",
         quote=True
     )
 
-print("🤖 ShieldX Bot is ready.")
-app.run()
+print("🚀 ShieldX Bot is starting...")
+
+# Auto-restart loop
+while True:
+    try:
+        app.run()
+    except Exception as e:
+        print(f"⚠️ Bot crashed due to: {e}")
+        print("🔁 Restarting in 5 seconds...")
+        time.sleep(5)
+
