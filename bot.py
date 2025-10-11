@@ -29,7 +29,7 @@ print("🚀 ShieldX Bot is starting...")
 # Auto-restart loop
 while True:
     try:
-        # ---- Web server to keep Render.com free service alive ----
+     # ---- Web server to keep Render.com free service alive ----
 from flask import Flask
 from threading import Thread
 
@@ -44,6 +44,7 @@ def run_web():
 
 # Start the web server in a background thread
 Thread(target=run_web).start()
+
 
         app.run()
     except Exception as e:
