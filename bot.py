@@ -1,6 +1,8 @@
 import os
 import time
 from pyrogram import Client, filters
+from flask import Flask
+from threading import Thread
 
 # Environment Variables (Render/Koyeb से auto-load होंगे)
 API_ID = int(os.environ.get("API_ID", 0))
@@ -26,26 +28,22 @@ async def start(_, msg):
 
 print("🚀 ShieldX Bot is starting...")
 
-# Auto-restart loop
-while True:
-    try:
-     # ---- Web server to keep Render.com free service alive ----
-from flask import Flask
-from threading import Thread
+# ---- Web server to keep Render.com free service alive ----
+web_app = Flask(__name__)
 
-app = Flask(__name__)
-
-@app.route('/')
+@web_app.route('/')
 def home():
     return "✅ ShieldX Bot is running on Render!"
 
 def run_web():
-    app.run(host="0.0.0.0", port=8080)
+    web_app.run(host="0.0.0.0", port=8080)
 
 # Start the web server in a background thread
 Thread(target=run_web).start()
 
-
+# ---- Auto-restart loop ----
+while True:
+    try:
         app.run()
     except Exception as e:
         print(f"⚠️ Bot crashed due to: {e}")
