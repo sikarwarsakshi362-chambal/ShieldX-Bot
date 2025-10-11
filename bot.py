@@ -40,7 +40,7 @@ def home():
     return "✅ ShieldX Bot is running on Render!"
 
 def run_web():
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=8080)
 
 # Start the web server in a background thread
 Thread(target=run_web).start()
