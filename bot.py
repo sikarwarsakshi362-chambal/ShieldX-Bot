@@ -1,164 +1,93 @@
-﻿import os
-import time
-import asyncio
-from datetime import datetime
+﻿import asyncio
+import os
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from dotenv import load_dotenv
-from modules import filters as mod_filters
-from modules import store
+from datetime import timedelta
 
+# Load .env
 load_dotenv()
+API_ID = int(os.getenv("API_ID", 0))
+API_HASH = os.getenv("API_HASH", "")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))
-SUPPORT_LINK = os.getenv("SUPPORT_LINK", "https://t.me/your_support_here")
-DEFAULT_DELETE_MINUTES = int(os.getenv("DEFAULT_DELETE_MINUTES", "60"))
+app = Client("ShieldXBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-app = Client("shieldx", bot_token=BOT_TOKEN)
+# === SETTINGS ===
+DEFAULT_DELETE_MINUTES = 60
+OWNER_IDS = [123456789, 987654321]  # 🔹 अपने Owner और Co-owner Telegram IDs डालो
 
-def dm_keyboard(username):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🧹 Clean Media", callback_data="clean_on"),
-         InlineKeyboardButton("🔞 NSFW Filter", callback_data="nsfw_on")],
-        [InlineKeyboardButton("💬 Abuse Filter", callback_data="abuse_on"),
-         InlineKeyboardButton("🕓 Clean Timer", callback_data="clean_time")],
-        [InlineKeyboardButton("🌐 Language", callback_data="lang"),
-         InlineKeyboardButton("🧩 Status", callback_data="ping")],
-        [InlineKeyboardButton("🔁 Reload", callback_data="reload"),
-         InlineKeyboardButton("⚙️ Help", callback_data="help")],
-        [InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{username}?startgroup=true"),
-         InlineKeyboardButton("💬 Support", url=SUPPORT_LINK)]
-    ])
+# === STORAGE ===
+config = {"clean_on": False, "delete_minutes": DEFAULT_DELETE_MINUTES}
 
-@app.on_message(filters.command("start") & filters.private)
-async def start_cmd(client, message):
-    username = (await client.get_me()).username
-    text = (
-        "🛡️ **ShieldX Protector AI Bot** 🤖\n\n"
-        "Welcome! I'm your 24×7 group guardian — keeping chats clean, safe & smart.\n\n"
-        "**Features:**\n"
-        "• 🚫 NSFW auto-delete + strict protection\n"
-        "• 🤬 Abuse filter & warnings\n"
-        "• 🧹 Auto media cleaner (20m–24h; default 60m)\n"
-        "• 👑 Owner/co-owner controls\n"
-        "• 🌍 Multi-language support (Default: English 🇮🇳)\n"
-    )
-    await message.reply_text(text, reply_markup=dm_keyboard(username), disable_web_page_preview=True)
 
-@app.on_message(filters.command("help") & filters.private)
-async def help_cmd(client, message):
-    text = (
-        "**🧩 ShieldX Help Menu**\n\n"
-        "**DM Commands:**\n"
-        "• /start - Intro & menu\n"
-        "• /help - Show help\n"
-        "• /ping - Check latency\n"
-        "• /reload - Owner only reload\n\n"
-        "**Group Commands (admins only):**\n"
-        "• /clean on|off|<time> — Auto-clean media\n"
-        "• /cleanall — Delete all media\n"
-        "• /abuse on|off — Enable/disable abuse filter\n"
-        "• /nsfw on|off — Enable/disable NSFW filter\n"
-        "• /lang — Change language\n"
-    )
-    await message.reply_text(text, disable_web_page_preview=True)
-
-@app.on_message(filters.command("ping") & filters.private)
-async def ping_cmd(client, message):
-    t0 = time.time()
-    await message.reply_text("⏳ Pinging...")
-    t1 = time.time()
-    await message.reply_text(f"🏓 Pong! Response: {int((t1 - t0) * 1000)} ms")
-
-async def is_admin(client, chat_id, user_id):
-    try:
-        member = await client.get_chat_member(chat_id, user_id)
-        return member.status in ("creator", "administrator")
-    except:
-        return False
-
-@app.on_message(filters.command("clean") & filters.group)
-async def clean_cmd(client, message):
-    chat_id = message.chat.id
+# 🧹 CLEAN COMMAND
+@app.on_message(filters.command("clean", prefixes=["/", "!"]))
+async def clean_toggle(client, message):
     args = message.text.split()
-    store.ensure_chat(chat_id)
 
-    if len(args) == 1:
-        cfg = store.get_chat(chat_id)
-        await message.reply_text(f"🧹 Auto-clean = {cfg.get('clean_on')} | Delete after {cfg.get('delete_minutes')}m")
+    # Owner-only control for cleanall
+    if len(args) > 1 and args[1].lower() == "off":
+        config["clean_on"] = False
+        await message.reply("🧹 Auto-clean disabled.")
         return
 
-    op = args[1].lower()
-    if op == "on":
-        store.set_chat(chat_id, "clean_on", True)
-        await message.reply_text("✅ Auto media cleaning enabled.")
-    elif op == "off":
-        store.set_chat(chat_id, "clean_on", False)
-        await message.reply_text("🛑 Auto media cleaning disabled.")
-    else:
+    # Check custom time (20 min - 24 hrs)
+    if len(args) > 1:
         try:
-            val = args[1]
-            if val.endswith("m"): minutes = int(val[:-1])
-            elif val.endswith("h"): minutes = int(val[:-1]) * 60
-            else: minutes = int(val)
-            if not (20 <= minutes <= 24*60): raise ValueError()
-            store.set_chat(chat_id, "delete_minutes", minutes)
-            await message.reply_text(f"🕓 Timer set to {minutes} minutes.")
+            mins = int(args[1])
+            if 20 <= mins <= 1440:
+                config["delete_minutes"] = mins
+                config["clean_on"] = True
+                await message.reply(f"✅ Auto-clean enabled for {mins} minutes.")
+                return
+            else:
+                await message.reply("⚠️ Set time between 20 and 1440 minutes (24 hrs).")
+                return
         except:
-            await message.reply_text("❌ Invalid time. Use e.g. 20m / 1h / 24h")
+            pass
 
-@app.on_message(filters.command("cleanall") & filters.group)
-async def cleanall_cmd(client, message):
-    user = message.from_user
-    chat_id = message.chat.id
-    if not await is_admin(client, chat_id, user.id):
-        return await message.reply_text("⚠️ Only admins can use /cleanall.")
-    await message.reply_text("🧹 Cleaning all media (2000 recent msgs)...")
-    async for msg in client.iter_history(chat_id, limit=2000):
+    config["clean_on"] = True
+    config["delete_minutes"] = DEFAULT_DELETE_MINUTES
+    await message.reply(f"✅ Auto-clean enabled (default {DEFAULT_DELETE_MINUTES} min).")
+
+
+# 🧨 CLEANALL COMMAND (Owner Only)
+@app.on_message(filters.command("cleanall", prefixes=["/", "!"]))
+async def clean_all(client, message):
+    user_id = message.from_user.id
+    if user_id not in OWNER_IDS:
+        await message.reply("❌ Only owner/co-owner can use this command.")
+        return
+
+    await message.reply("🧨 Deleting all media messages...")
+
+    async for msg in app.get_chat_history(message.chat.id, limit=200):
         if msg.media:
-            try: await client.delete_messages(chat_id, msg.message_id)
-            except: pass
-    await message.reply_text("✅ All media deleted.")
+            try:
+                await msg.delete()
+            except:
+                pass
 
-@app.on_message(filters.command("reload") & filters.private)
-async def reload_cmd(client, message):
-    if message.from_user.id != OWNER_ID:
-        return await message.reply_text("⚠️ Owner only.")
-    await message.reply_text("♻️ Reloading ShieldX Bot...")
-    os._exit(3)
+    await message.reply("✅ All media deleted successfully!")
 
-@app.on_message(filters.group & ~filters.service)
-async def monitor_group(client, message):
-    chat_id = message.chat.id
-    user = message.from_user
-    store.ensure_chat(chat_id)
-    cfg = store.get_chat(chat_id)
-    is_admin_user = await is_admin(client, chat_id, user.id)
 
-    if cfg.get("abuse_on", True) and message.text:
-        if mod_filters.contains_abuse(message.text):
-            await message.delete()
-            store.add_warning(user.id)
-            await message.reply_text("⚠️ Avoid abusive language. Warning issued.")
-            return
+# 🧠 AUTO DELETE MONITOR
+@app.on_message(filters.group)
+async def auto_delete_media(client, message):
+    if not config.get("clean_on"):
+        return
+    if message.media:
+        delay = config.get("delete_minutes", DEFAULT_DELETE_MINUTES) * 60
+        asyncio.create_task(schedule_delete(client, message.chat.id, message.id, delay))
 
-    if cfg.get("nsfw_on", True):
-        if message.text and mod_filters.contains_nsfw_text(message.text):
-            await message.delete()
-            await client.send_message(chat_id, "🚫 NSFW detected and removed.")
-            return
 
-    if cfg.get("clean_on", False) and message.media and not is_admin_user:
-        asyncio.get_event_loop().create_task(schedule_delete(client, chat_id, message.message_id, cfg.get("delete_minutes", DEFAULT_DELETE_MINUTES) * 60))
-
-async def schedule_delete(client, chat_id, message_id, delay):
+async def schedule_delete(client, chat_id, msg_id, delay):
     await asyncio.sleep(delay)
     try:
-        await client.delete_messages(chat_id, message_id)
+        await client.delete_messages(chat_id, msg_id)
     except:
         pass
 
-if __name__ == "__main__":
-    store.get_store()
-    app.run()
+
+print("🛡️ ShieldX Cleaner Bot Active...")
+app.run()
