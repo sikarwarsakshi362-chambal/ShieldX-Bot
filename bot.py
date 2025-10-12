@@ -293,7 +293,7 @@ async def unmute_cmd(_, message):
     await message.reply_text("✅ User unmuted and counters reset.", quote=True)
 
 # core moderation (applies to groups)
-@client.on_message(filters.chat_type.groups & ~filters.user(lambda _, m: is_owner_id(m.from_user.id if m.from_user else None)))
+@client.on_message(filters.group & ~filters.user(lambda _, m: is_owner_id(m.from_user.id if m.from_user else None)))
 async def mod_handler(_, message):
     try:
         # enforcement window
