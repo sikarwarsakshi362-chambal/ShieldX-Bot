@@ -2,7 +2,8 @@ import asyncio
 import os
 import threading
 from flask import Flask
-from pyrogram import Client, filters
+from pyrogram import Client, filters, types
+from pyrogram.errors import RPCError
 from dotenv import load_dotenv
 
 # === LOAD ENV ===
@@ -11,97 +12,135 @@ API_ID = int(os.getenv("API_ID", 0))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-# === TELEGRAM BOT SETUP ===
+# === TELEGRAM BOT ===
 app = Client("ShieldXBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+config = {"clean_on": False, "delete_minutes": 0}
 
-# === SETTINGS ===
-DEFAULT_DELETE_MINUTES = 60
-CO_OWNER_IDS = [123456789, 987654321]  # 🔹 Apne co-owner Telegram IDs daal do
+# === START COMMAND ===
+@app.on_message(filters.command("start", prefixes=["/", "!"]))
+async def start_cmd(client, message):
+    text = (
+        "🩵 **Hey! I'm ShieldX**\n"
+        "Your personal auto-clean assistant.\n\n"
+        "🧹 I help you keep chats clean — auto delete media & spam.\n"
+        "⚙️ Add me to your group and make me admin.\n\n"
+        "👇 Use the buttons below to explore!"
+    )
+    buttons = [
+        [
+            types.InlineKeyboardButton("🧹 Add to Group", url="https://t.me/ShieldX_CleanerBot?startgroup=new"),
+        ],
+        [
+            types.InlineKeyboardButton("📜 Commands", callback_data="help_menu"),
+            types.InlineKeyboardButton("💠 About", callback_data="about_menu"),
+        ]
+    ]
+    reply_markup = types.InlineKeyboardMarkup(buttons)
+    await message.reply_text(text, reply_markup=reply_markup, disable_web_page_preview=True)
 
-# === STORAGE ===
-config = {"clean_on": False, "delete_minutes": DEFAULT_DELETE_MINUTES}
+# === HELP COMMAND ===
+@app.on_message(filters.command("help", prefixes=["/", "!"]))
+async def help_cmd(client, message):
+    await show_help(message)
 
+# === CALLBACK HANDLERS ===
+@app.on_callback_query()
+async def callback_query(client, query):
+    if query.data == "help_menu":
+        await show_help(query.message, edit=True)
+    elif query.data == "about_menu":
+        text = (
+            "💠 **About ShieldX**\n\n"
+            "• Language: Python (Pyrogram)\n"
+            "• Function: Auto-clean media & spam\n"
+            "• Speed: Fast, secure & reliable\n\n"
+            "🧠 Developed with 💙 for smart Telegram management."
+        )
+        back_btn = types.InlineKeyboardMarkup(
+            [[types.InlineKeyboardButton("⬅️ Back", callback_data="help_menu")]]
+        )
+        await query.message.edit_text(text, reply_markup=back_btn)
+        await query.answer()
 
-# 🧹 CLEAN COMMAND (Admins)
-@app.on_message(filters.command("clean", prefixes=["/", "!"]))
+async def show_help(message, edit=False):
+    text = (
+        "✨ **ShieldX Commands**\n\n"
+        "🧹 `/clean [minutes]` → Enable auto-clean (default 60m)\n"
+        "🚫 `/clean off` → Turn off auto-clean\n"
+        "💣 `/cleanall` → Delete all media (for group owner/admins)\n\n"
+        "⚡ Clean. Silent. Powerful."
+    )
+    back_btn = types.InlineKeyboardMarkup(
+        [[types.InlineKeyboardButton("🏠 Home", callback_data="start_home")]]
+    )
+    if edit:
+        await message.edit_text(text, reply_markup=back_btn)
+    else:
+        await message.reply_text(text, reply_markup=back_btn)
+        
+@app.on_callback_query(filters.regex("start_home"))
+async def home_cb(client, query):
+    await start_cmd(client, query.message)
+    await query.answer()
+
+# === CLEAN COMMAND ===
+@app.on_message(filters.group & filters.command("clean", prefixes=["/", "!"]))
 async def clean_toggle(client, message):
-    user_id = message.from_user.id
-
-    try:
-        member = await client.get_chat_member(message.chat.id, user_id)
-        is_admin = member.status in ["administrator", "creator"]
-    except:
-        is_admin = False
-
-    if not is_admin:
-        await message.reply("❌ केवल group admins इस command का उपयोग कर सकते हैं।")
+    member = await app.get_chat_member(message.chat.id, message.from_user.id)
+    if member.status not in ["administrator", "creator"]:
         return
 
     args = message.text.split()
-
-    # OFF Command
     if len(args) > 1 and args[1].lower() == "off":
         config["clean_on"] = False
-        await message.reply("🧹 Auto-clean बंद कर दिया गया।")
+        await message.reply_text("🧹 Auto-clean **disabled.**")
         return
 
-    # Custom Time Command
     if len(args) > 1:
         try:
             mins = int(args[1])
             if 20 <= mins <= 1440:
                 config["delete_minutes"] = mins
                 config["clean_on"] = True
-                await message.reply(f"✅ Auto-clean चालू ({mins} मिनट के लिए)।")
-                return
-            else:
-                await message.reply("⚠️ समय 20 से 1440 मिनट (24 घंटे) के बीच होना चाहिए।")
+                await message.reply_text(f"✅ Auto-clean set for **{mins}m.**")
                 return
         except:
             pass
 
-    # Default 60 Minutes
     config["clean_on"] = True
-    config["delete_minutes"] = DEFAULT_DELETE_MINUTES
-    await message.reply(f"✅ Auto-clean चालू (default {DEFAULT_DELETE_MINUTES} मिनट)।")
+    config["delete_minutes"] = 60
+    await message.reply_text("✅ Auto-clean **enabled** (default 60m).")
 
-
-# 🧨 CLEANALL COMMAND (Group Owner + Co-Owners)
-@app.on_message(filters.command("cleanall", prefixes=["/", "!"]))
+# === CLEANALL COMMAND ===
+@app.on_message(filters.group & filters.command("cleanall", prefixes=["/", "!"]))
 async def clean_all(client, message):
-    user_id = message.from_user.id
-
-    try:
-        member = await client.get_chat_member(message.chat.id, user_id)
-        is_owner = member.status == "creator"
-    except:
-        is_owner = False
-
-    if not (is_owner or user_id in CO_OWNER_IDS):
-        await message.reply("❌ केवल Group Owner या Co-Owners यह command चला सकते हैं।")
+    member = await app.get_chat_member(message.chat.id, message.from_user.id)
+    if member.status not in ["creator", "administrator"]:
         return
 
-    await message.reply("🧨 सभी media messages delete किए जा रहे हैं...")
-
-    async for msg in app.get_chat_history(message.chat.id, limit=500):
+    await message.reply_text("🧨 Cleaning up media...")
+    async for msg in app.get_chat_history(message.chat.id, limit=300):
         if msg.media:
             try:
                 await msg.delete()
-            except:
+            except RPCError:
                 pass
+    await message.reply_text("✅ All media cleaned successfully!")
 
-    await message.reply("✅ सभी media delete कर दिए गए!")
-
-
-# 🧠 AUTO DELETE MONITOR
+# === AUTO DELETE MEDIA ===
 @app.on_message(filters.group)
 async def auto_delete_media(client, message):
     if not config.get("clean_on"):
         return
     if message.media:
-        delay = config.get("delete_minutes", DEFAULT_DELETE_MINUTES) * 60
-        asyncio.create_task(schedule_delete(client, message.chat.id, message.id, delay))
-
+        delay = config.get("delete_minutes", 0) * 60
+        if delay == 0:
+            try:
+                await message.delete()
+            except:
+                pass
+        else:
+            asyncio.create_task(schedule_delete(client, message.chat.id, message.id, delay))
 
 async def schedule_delete(client, chat_id, msg_id, delay):
     await asyncio.sleep(delay)
@@ -110,23 +149,5 @@ async def schedule_delete(client, chat_id, msg_id, delay):
     except:
         pass
 
-
-# === FLASK KEEP-ALIVE SERVER ===
-flask_app = Flask(__name__)
-
-@flask_app.route('/')
-def home():
-    return "🛡️ ShieldX Bot is running!"
-
-@flask_app.route('/healthz')
-def healthz():
-    return "OK", 200
-
-def run_flask():
-    flask_app.run(host='0.0.0.0', port=10000)
-
-# === START BOTH (FLASK + TELEGRAM BOT) ===
-if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
-    print("🛡️ ShieldX Cleaner Bot Active on Render...")
-    app.run()
+# === FLASK KEEP-ALIVE ===
+flask_app = Flas_
