@@ -1,7 +1,6 @@
 import asyncio
 import os
 import threading
-from datetime import timedelta
 from flask import Flask
 from pyrogram import Client, filters
 from dotenv import load_dotenv
@@ -17,61 +16,81 @@ app = Client("ShieldXBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN
 
 # === SETTINGS ===
 DEFAULT_DELETE_MINUTES = 60
-OWNER_IDS = [123456789, 987654321]  # 🔹 Apne Owner aur Co-owner Telegram IDs daalo yahan
+CO_OWNER_IDS = [123456789, 987654321]  # 🔹 Apne co-owner Telegram IDs daal do
 
 # === STORAGE ===
 config = {"clean_on": False, "delete_minutes": DEFAULT_DELETE_MINUTES}
 
 
-# 🧹 CLEAN COMMAND
+# 🧹 CLEAN COMMAND (Admins)
 @app.on_message(filters.command("clean", prefixes=["/", "!"]))
 async def clean_toggle(client, message):
-    args = message.text.split()
+    user_id = message.from_user.id
 
-    # Owner-only control for turning off
-    if len(args) > 1 and args[1].lower() == "off":
-        config["clean_on"] = False
-        await message.reply("🧹 Auto-clean disabled.")
+    try:
+        member = await client.get_chat_member(message.chat.id, user_id)
+        is_admin = member.status in ["administrator", "creator"]
+    except:
+        is_admin = False
+
+    if not is_admin:
+        await message.reply("❌ केवल group admins इस command का उपयोग कर सकते हैं।")
         return
 
-    # Check custom time (20 min - 24 hrs)
+    args = message.text.split()
+
+    # OFF Command
+    if len(args) > 1 and args[1].lower() == "off":
+        config["clean_on"] = False
+        await message.reply("🧹 Auto-clean बंद कर दिया गया।")
+        return
+
+    # Custom Time Command
     if len(args) > 1:
         try:
             mins = int(args[1])
             if 20 <= mins <= 1440:
                 config["delete_minutes"] = mins
                 config["clean_on"] = True
-                await message.reply(f"✅ Auto-clean enabled for {mins} minutes.")
+                await message.reply(f"✅ Auto-clean चालू ({mins} मिनट के लिए)।")
                 return
             else:
-                await message.reply("⚠️ Set time between 20 and 1440 minutes (24 hrs).")
+                await message.reply("⚠️ समय 20 से 1440 मिनट (24 घंटे) के बीच होना चाहिए।")
                 return
         except:
             pass
 
+    # Default 60 Minutes
     config["clean_on"] = True
     config["delete_minutes"] = DEFAULT_DELETE_MINUTES
-    await message.reply(f"✅ Auto-clean enabled (default {DEFAULT_DELETE_MINUTES} min).")
+    await message.reply(f"✅ Auto-clean चालू (default {DEFAULT_DELETE_MINUTES} मिनट)।")
 
 
-# 🧨 CLEANALL COMMAND (Owner Only)
+# 🧨 CLEANALL COMMAND (Group Owner + Co-Owners)
 @app.on_message(filters.command("cleanall", prefixes=["/", "!"]))
 async def clean_all(client, message):
     user_id = message.from_user.id
-    if user_id not in OWNER_IDS:
-        await message.reply("❌ Only owner/co-owner can use this command.")
+
+    try:
+        member = await client.get_chat_member(message.chat.id, user_id)
+        is_owner = member.status == "creator"
+    except:
+        is_owner = False
+
+    if not (is_owner or user_id in CO_OWNER_IDS):
+        await message.reply("❌ केवल Group Owner या Co-Owners यह command चला सकते हैं।")
         return
 
-    await message.reply("🧨 Deleting all media messages...")
+    await message.reply("🧨 सभी media messages delete किए जा रहे हैं...")
 
-    async for msg in app.get_chat_history(message.chat.id, limit=200):
+    async for msg in app.get_chat_history(message.chat.id, limit=500):
         if msg.media:
             try:
                 await msg.delete()
             except:
                 pass
 
-    await message.reply("✅ All media deleted successfully!")
+    await message.reply("✅ सभी media delete कर दिए गए!")
 
 
 # 🧠 AUTO DELETE MONITOR
