@@ -1,10 +1,10 @@
-# bot.py (ShieldX v3.0) — final, deploy-ready
+# bot.py (ShieldX v3.0) — env-aware (OWNER_ID / RENDER vars auto-read)
 import asyncio
 import json
 import os
 import threading
 import time
-from typing import Dict
+from typing import Dict, List
 
 from flask import Flask
 from pyrogram import Client, filters, types
@@ -19,16 +19,32 @@ API_ID = int(os.getenv("API_ID", 0))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-# Add your co-owner Telegram numeric IDs here (who can run cleanall across groups)
-CO_OWNER_IDS = [123456789]  # <-- replace / extend as needed
+# OWNER / CO-OWNER support: allow comma-separated list in env
+def parse_owner_ids(s: str) -> List[int]:
+    if not s:
+        return []
+    parts = [p.strip() for p in s.split(",") if p.strip()]
+    ids: List[int] = []
+    for p in parts:
+        try:
+            ids.append(int(p))
+        except:
+            continue
+    return ids
+
+OWNER_ID_RAW = os.getenv("OWNER_ID", "")  # can be "12345" or "123,456,789"
+CO_OWNER_IDS = parse_owner_ids(OWNER_ID_RAW) or []  # list of ints
+
+# RENDER vars (not used by bot directly but kept for convenience)
+RENDER_API_KEY = os.getenv("RENDER_API_KEY", "")
+RENDER_SERVICE_ID = os.getenv("RENDER_SERVICE_ID", "")
+RENDER_HEALTH_URL = os.getenv("RENDER_HEALTH_URL", "")
 
 DATA_FILE = "data.json"  # persistent per-chat settings
 
 # ---------------------------
 # DEFAULT MESSAGES (multi-locale small map)
 # ---------------------------
-# Keys used below: start_dm, start_group, help_dm, help_group, auto_on, auto_off, auto_set,
-# cleanall_start, cleanall_done, only_admin, only_owner, status_text, ping_text
 MESSAGES = {
     "en-in": {
         "start_dm": "🛡️ *ShieldX Protection*\nI keep your groups clean. Use buttons below.",
@@ -75,7 +91,6 @@ MESSAGES = {
         "status_text": "Auto-clean: {on} | Interval: {t}",
         "ping_text": "🏓 Pong! {ms}ms",
     },
-    # add more locales (fr,de,ru,pt,jp,id,ar) similarly if needed...
 }
 
 SUPPORTED_LOCALES = list(MESSAGES.keys())
@@ -93,14 +108,12 @@ def load_data() -> Dict:
             return {}
     return {}
 
-
 def save_data(d: Dict):
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(d, f, ensure_ascii=False, indent=2)
     except:
         pass
-
 
 DATA = load_data()  # format: { "<chat_id>": {"clean_on":bool,"delete_minutes":int,"lang":str} }
 
@@ -164,34 +177,39 @@ flask_app = Flask(__name__)
 # ---------------------------
 # COMMANDS
 # ---------------------------
-# /start
 @app.on_message(filters.command("start", prefixes=["/", "!"]))
 async def start_cmd(client, message):
     cfg = ensure_chat(message.chat.id if message.chat else message.from_user.id)
     # If private, show UI buttons
-    if message.chat.type == "private":
-        text = get_msg("start_dm", message.chat.id)
-        buttons = [
-            [types.InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{(await client.get_me()).username}?startgroup=new")],
-            [types.InlineKeyboardButton("📘 Commands", callback_data="sx_help")],
-        ]
-        await message.reply_text(text, reply_markup=types.InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
-    else:
-        # short group reply
-        await message.reply(get_msg("start_group", message.chat.id), quote=False)
+    try:
+        if message.chat and message.chat.type == "private":
+            text = get_msg("start_dm", message.chat.id)
+            me = await client.get_me()
+            buttons = [
+                [types.InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{me.username}?startgroup=new")],
+                [types.InlineKeyboardButton("📘 Commands", callback_data="sx_help")],
+            ]
+            await message.reply_text(text, reply_markup=types.InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
+        else:
+            # short group reply
+            await message.reply(get_msg("start_group", message.chat.id), quote=False)
+    except Exception:
+        # don't crash on weird chat types
+        pass
 
-# /help
 @app.on_message(filters.command("help", prefixes=["/", "!"]))
 async def help_cmd(client, message):
-    if message.chat.type == "private":
-        await message.reply_text(get_msg("help_dm", message.chat.id), disable_web_page_preview=True)
-    else:
-        # short group ping to DM
-        try:
-            await message.reply(get_msg("help_group", message.chat.id), quote=False)
-        except ChatWriteForbidden:
-            # can't write in group, ignore
-            pass
+    try:
+        if message.chat and message.chat.type == "private":
+            await message.reply_text(get_msg("help_dm", message.chat.id), disable_web_page_preview=True)
+        else:
+            # short group ping to DM
+            try:
+                await message.reply(get_msg("help_group", message.chat.id), quote=False)
+            except ChatWriteForbidden:
+                pass
+    except Exception:
+        pass
 
 # callback handlers for inline help button
 @app.on_callback_query(filters.regex(r"^sx_help$"))
@@ -290,6 +308,7 @@ async def cleanall_cmd(client, message):
     except:
         is_owner = False
 
+    # allow env-defined co-owners as well
     if not (is_owner or user_id in CO_OWNER_IDS):
         await message.reply(get_msg("only_owner", message.chat.id), quote=False)
         return
@@ -297,13 +316,20 @@ async def cleanall_cmd(client, message):
     # start cleaning
     await message.reply(get_msg("cleanall_start", message.chat.id), quote=False)
     deleted = 0
-    async for msg in client.get_chat_history(message.chat.id, limit=500):
-        if msg.media:
-            try:
-                await client.delete_messages(message.chat.id, msg.message_id)
-                deleted += 1
-            except RPCError:
-                continue
+    try:
+        # iterate over recent history (limit to avoid long tasks)
+        async for msg in client.get_chat_history(message.chat.id, limit=500):
+            if msg.media:
+                try:
+                    await client.delete_messages(message.chat.id, msg.message_id)
+                    deleted += 1
+                except RPCError:
+                    # skip messages we can't delete (permissions, older than allowed, etc.)
+                    continue
+    except Exception:
+        # in case of any error retrieving history, continue
+        pass
+
     await message.reply(get_msg("cleanall_done", message.chat.id, n=deleted), quote=False)
 
 # Auto-delete monitor
@@ -312,15 +338,18 @@ async def auto_delete_monitor(client, message):
     cfg = ensure_chat(message.chat.id)
     if not cfg.get("clean_on"):
         return
+    # only act on media messages
     if message.media:
         mins = cfg.get("delete_minutes", 60)
         delay = int(mins) * 60
+        # if immediate deletion configured (0), attempt immediate delete
         if delay == 0:
             try:
                 await client.delete_messages(message.chat.id, message.message_id)
             except:
                 pass
         else:
+            # schedule deletion without awaiting (fire-and-forget)
             asyncio.create_task(schedule_delete(client, message.chat.id, message.message_id, delay))
 
 async def schedule_delete(client, chat_id, msg_id, delay):
@@ -342,19 +371,33 @@ def healthz():
     return "OK", 200
 
 def run_flask():
-    flask_app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
+    # Use a non-blocking Flask run in a daemon thread — keep default port env-driven
+    port = int(os.getenv("PORT", 10000))
+    flask_app.run(host="0.0.0.0", port=port)
 
 # ---------------------------
 # MAIN
 # ---------------------------
 async def main():
-    # start flask keep-alive in thread
+    # start flask keep-alive in background thread
     threading.Thread(target=run_flask, daemon=True).start()
     print("🩵 ShieldX starting...")
-    await app.start()
-    print("🩵 ShieldX started (Pyrogram OK).")
+    try:
+        await app.start()
+        me = await app.get_me()
+        print(f"🩵 ShieldX started (Pyrogram OK). Bot: @{me.username} ({me.id})")
+    except Exception as e:
+        print("❌ Failed to start Pyrogram client:", e)
+        return
+
     # keep alive forever
-    await asyncio.Event().wait()
+    try:
+        await asyncio.Event().wait()
+    finally:
+        try:
+            await app.stop()
+        except:
+            pass
 
 if __name__ == "__main__":
     asyncio.run(main())
