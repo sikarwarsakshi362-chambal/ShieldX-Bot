@@ -114,3 +114,45 @@ def load_json(path: str) -> dict:
     except Exception as e:
         print(f"[ShieldX] Error loading {path}: {e}")
     return {}
+# ---------------------------
+# BOT STARTUP
+# ---------------------------
+def run_bot():
+    print("?? ShieldX Bot initializing...")
+    app_name = os.getenv("RENDER_SERVICE_NAME", "local")
+    print(f"[ShieldX] Environment: {app_name}")
+
+    try:
+        bot = Client(
+            "shieldx",
+            api_id=API_ID,
+            api_hash=API_HASH,
+            bot_token=BOT_TOKEN,
+            workers=8,
+            sleep_threshold=30,
+        )
+
+        @bot.on_message(filters.command("start"))
+        async def start_cmd(_, msg):
+            await msg.reply("??? ShieldX Active — ready to protect your group!")
+
+        @bot.on_message(filters.command("ping"))
+        async def ping_cmd(_, msg):
+            start = time.time()
+            reply = await msg.reply("?? Pong...")
+            ms = (time.time() - start) * 1000
+            await reply.edit_text(f"?? Pong! `{int(ms)}ms`")
+
+        print("[ShieldX] Starting Pyrogram client...")
+        bot.run()
+
+    except Exception as e:
+        print(f"[ShieldX ERROR] {e}")
+@app.before_first_request
+def start_bot():
+    print("?? ShieldX starting...")
+    threading.Thread(target=run_bot, daemon=True).start()
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
