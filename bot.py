@@ -70,3 +70,33 @@ if __name__ == "__main__":
 
 
 
+
+
+
+# === ShieldX Watchdog Auto-Alert (Safe Inject) ===
+import asyncio, os
+from datetime import datetime
+
+async def watchdog(bot):
+    owner = int(os.getenv("OWNER_ID", 0))
+    while True:
+        try:
+            await bot.get_me()
+        except Exception as e:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            msg = f"⚠️ ShieldX Crash Detected at {now}\nError: {e}"
+            print(msg)
+            if owner:
+                try:
+                    await bot.send_message(owner, msg)
+                except Exception:
+                    pass
+            os._exit(1)
+        await asyncio.sleep(60)
+
+try:
+    import asyncio
+    asyncio.get_event_loop().create_task(watchdog(bot))
+except Exception:
+    pass
+# === End of ShieldX Watchdog Auto-Alert ===
