@@ -3,3 +3,9 @@ config.json
 __pycache__/
 *.pyc
 ShieldXBot.session*
+
+# Pyrogram sessions
+*.session
+*.session-journal
+# binaries
+gcmcore.exe
