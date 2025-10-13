@@ -96,4 +96,21 @@ SUPPORTED_LOCALES = list(MESSAGES.keys())
 # ---------------------------
 # STORAGE HANDLING
 # ---------------------------
-def
+# ---------------------------
+# STORAGE HANDLING
+# ---------------------------
+def save_json(path: str, data: dict):
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[ShieldX] Error saving {path}: {e}")
+
+def load_json(path: str) -> dict:
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"[ShieldX] Error loading {path}: {e}")
+    return {}
