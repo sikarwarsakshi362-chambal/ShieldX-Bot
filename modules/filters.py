@@ -23,3 +23,4 @@ def is_nsfw_media(file_name: str = None, caption: str = None) -> bool:
         fn = file_name.lower()
         return any(k in fn for k in NSFW_KEYWORDS)
     return False
+

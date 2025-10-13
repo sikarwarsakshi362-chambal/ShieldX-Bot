@@ -8,3 +8,4 @@ def default_chat_settings():
         "abuse_on": True,
         "nsfw_on": True
     }
+

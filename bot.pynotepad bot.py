@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-# bot.py — ShieldX v3.2 Stable (keep-alive + NSFW + full commands, preserve structure)
+﻿# -*- coding: utf-8 -*-
+# bot.py â€” ShieldX v3.2 Stable (keep-alive + NSFW + full commands, preserve structure)
 
 import asyncio
 import json
@@ -55,34 +55,34 @@ DATA_FILE = "data.json"
 # ---------------------------
 MESSAGES = {
     "en-in": {
-        "start_dm": "🛡️ *ShieldX Protection*\nI keep your groups clean. Use buttons below.",
-        "start_group": "🛡️ ShieldX active in this group.",
-        "help_dm": "✨ Commands:\n/clean [time]\n/clean off\n/cleanall\n/nsfw on|off|status\n/lang <code>\n/status\n/reload",
-        "help_group": "📩 Sent you a DM with commands.",
-        "auto_on": "✅ Auto-clean enabled — will clear every {t}.",
-        "auto_off": "🛑 Auto-clean disabled.",
-        "auto_set": "✅ Auto-clean set to {t}.",
-        "cleanall_start": "🧹 Clearing recent media (last 24h)...",
-        "cleanall_done": "✅ {n} media items removed.",
-        "only_admin": "⚠️ Only group admins can use this.",
-        "only_owner": "⚠️ Only group owner or co-owner can use this.",
-        "status_text": "🧹 Auto-clean: {on} | Interval: {t}",
-        "ping_text": "🏓 Pong! {ms}ms",
+        "start_dm": "ðŸ›¡ï¸ *ShieldX Protection*\nI keep your groups clean. Use buttons below.",
+        "start_group": "ðŸ›¡ï¸ ShieldX active in this group.",
+        "help_dm": "âœ¨ Commands:\n/clean [time]\n/clean off\n/cleanall\n/nsfw on|off|status\n/lang <code>\n/status\n/reload",
+        "help_group": "ðŸ“© Sent you a DM with commands.",
+        "auto_on": "âœ… Auto-clean enabled â€” will clear every {t}.",
+        "auto_off": "ðŸ›‘ Auto-clean disabled.",
+        "auto_set": "âœ… Auto-clean set to {t}.",
+        "cleanall_start": "ðŸ§¹ Clearing recent media (last 24h)...",
+        "cleanall_done": "âœ… {n} media items removed.",
+        "only_admin": "âš ï¸ Only group admins can use this.",
+        "only_owner": "âš ï¸ Only group owner or co-owner can use this.",
+        "status_text": "ðŸ§¹ Auto-clean: {on} | Interval: {t}",
+        "ping_text": "ðŸ“ Pong! {ms}ms",
     },
     "hi": {
-        "start_dm": "🛡️ *ShieldX Protection*\nमैं आपके ग्रुप को साफ़ रखता हूँ। नीचे बटन देखें।",
-        "start_group": "🛡️ ShieldX समूह में सक्रिय है।",
-        "help_dm": "कमांड:\n/clean [time]\n/clean off\n/cleanall\n/nsfw on|off|status\n/lang <code>\n/status\n/reload",
-        "help_group": "कमांड DM में भेज दी गई हैं।",
-        "auto_on": "✅ Auto-clean चालू — हर {t} पर साफ़ करेगा।",
-        "auto_off": "🛑 Auto-clean बंद किया गया।",
-        "auto_set": "✅ Auto-clean सेट किया गया — अंतराल: {t}.",
-        "cleanall_start": "🧹 हालिया 24 घंटों की मीडिया हटाई जा रही है...",
-        "cleanall_done": "✅ {n} मीडिया हटाए गए।",
-        "only_admin": "⚠️ केवल group admins उपयोग कर सकते हैं।",
-        "only_owner": "⚠️ केवल group owner या co-owner उपयोग कर सकते हैं।",
+        "start_dm": "ðŸ›¡ï¸ *ShieldX Protection*\nà¤®à¥ˆà¤‚ à¤†à¤ªà¤•à¥‡ à¤—à¥à¤°à¥à¤ª à¤•à¥‹ à¤¸à¤¾à¤«à¤¼ à¤°à¤–à¤¤à¤¾ à¤¹à¥‚à¤à¥¤ à¤¨à¥€à¤šà¥‡ à¤¬à¤Ÿà¤¨ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤",
+        "start_group": "ðŸ›¡ï¸ ShieldX à¤¸à¤®à¥‚à¤¹ à¤®à¥‡à¤‚ à¤¸à¤•à¥à¤°à¤¿à¤¯ à¤¹à¥ˆà¥¤",
+        "help_dm": "à¤•à¤®à¤¾à¤‚à¤¡:\n/clean [time]\n/clean off\n/cleanall\n/nsfw on|off|status\n/lang <code>\n/status\n/reload",
+        "help_group": "à¤•à¤®à¤¾à¤‚à¤¡ DM à¤®à¥‡à¤‚ à¤­à¥‡à¤œ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¤‚à¥¤",
+        "auto_on": "âœ… Auto-clean à¤šà¤¾à¤²à¥‚ â€” à¤¹à¤° {t} à¤ªà¤° à¤¸à¤¾à¤«à¤¼ à¤•à¤°à¥‡à¤—à¤¾à¥¤",
+        "auto_off": "ðŸ›‘ Auto-clean à¤¬à¤‚à¤¦ à¤•à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾à¥¤",
+        "auto_set": "âœ… Auto-clean à¤¸à¥‡à¤Ÿ à¤•à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾ â€” à¤…à¤‚à¤¤à¤°à¤¾à¤²: {t}.",
+        "cleanall_start": "ðŸ§¹ à¤¹à¤¾à¤²à¤¿à¤¯à¤¾ 24 à¤˜à¤‚à¤Ÿà¥‹à¤‚ à¤•à¥€ à¤®à¥€à¤¡à¤¿à¤¯à¤¾ à¤¹à¤Ÿà¤¾à¤ˆ à¤œà¤¾ à¤°à¤¹à¥€ à¤¹à¥ˆ...",
+        "cleanall_done": "âœ… {n} à¤®à¥€à¤¡à¤¿à¤¯à¤¾ à¤¹à¤Ÿà¤¾à¤ à¤—à¤à¥¤",
+        "only_admin": "âš ï¸ à¤•à¥‡à¤µà¤² group admins à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤",
+        "only_owner": "âš ï¸ à¤•à¥‡à¤µà¤² group owner à¤¯à¤¾ co-owner à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤",
         "status_text": "Auto-clean: {on} | Interval: {t}",
-        "ping_text": "🏓 Pong! {ms}ms",
+        "ping_text": "ðŸ“ Pong! {ms}ms",
     },
 }
 DEFAULT_LOCALE = "en-in"
@@ -158,7 +158,7 @@ flask_app = Flask(__name__)
 
 @flask_app.route("/")
 def index():
-    return "🩵 ShieldX Bot — alive"
+    return "ðŸ©µ ShieldX Bot â€” alive"
 
 @flask_app.route("/healthz")
 def healthz():
@@ -183,9 +183,9 @@ async def start_cmd(client, message):
             text = get_msg("start_dm", message.chat.id)
             me = await client.get_me()
             kb = [
-                [types.InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{me.username}?startgroup=new")],
-                [types.InlineKeyboardButton("📘 Commands", callback_data="sx_help")],
-                [types.InlineKeyboardButton("🔧 Support", url=os.getenv("SUPPORT_URL", "https://t.me/shieldxprotector_bot"))],
+                [types.InlineKeyboardButton("âž• Add to Group", url=f"https://t.me/{me.username}?startgroup=new")],
+                [types.InlineKeyboardButton("ðŸ“˜ Commands", callback_data="sx_help")],
+                [types.InlineKeyboardButton("ðŸ”§ Support", url=os.getenv("SUPPORT_URL", "https://t.me/shieldxprotector_bot"))],
             ]
             await message.reply_text(text, reply_markup=types.InlineKeyboardMarkup(kb), disable_web_page_preview=True)
         else:
@@ -217,7 +217,7 @@ async def help_cmd(client, message):
 @bot.on_message(filters.command("ping", prefixes=["/", "!"]))
 async def ping_cmd(client, message):
     t0 = time.time()
-    m = await message.reply("🏓 ...")
+    m = await message.reply("ðŸ“ ...")
     ms = int((time.time() - t0) * 1000)
     await m.edit_text(get_msg("ping_text", message.chat.id, ms=ms))
 
@@ -241,7 +241,7 @@ async def lang_cmd(client, message):
     cfg = ensure_chat(message.chat.id)
     cfg["lang"] = code
     save_data(DATA)
-    await message.reply(get_msg("start_group", message.chat.id) + f"\n🌐 Language: {code}", quote=False)
+    await message.reply(get_msg("start_group", message.chat.id) + f"\nðŸŒ Language: {code}", quote=False)
 
 @bot.on_message(filters.command("clean", prefixes=["/", "!"]) & filters.group)
 async def clean_cmd(client, message):
@@ -273,7 +273,7 @@ async def clean_cmd(client, message):
             return
         mins = parse_time_token(token)
         if mins is None or mins < 20 or mins > 1440:
-            await message.reply("⚠️ Provide time between 20m and 24h (e.g. 20m, 2h, 1d).", quote=False)
+            await message.reply("âš ï¸ Provide time between 20m and 24h (e.g. 20m, 2h, 1d).", quote=False)
             return
         cfg["clean_on"] = True
         cfg["delete_minutes"] = mins
@@ -301,7 +301,7 @@ async def cleanall_cmd(client, message):
     await message.reply(get_msg("cleanall_start", message.chat.id), quote=False)
     deleted = 0
     try:
-        # search recent messages (last ~24h) — limit to avoid overload
+        # search recent messages (last ~24h) â€” limit to avoid overload
         async for msg in client.get_chat_history(message.chat.id, limit=1000):
             # only delete media and recent messages (roughly last 24h)
             if msg.media:
@@ -452,7 +452,7 @@ async def nsfw_handler(client, message):
 
         # send warning and schedule its deletion
         try:
-            warn = await client.send_message(message.chat.id, f"⚠️ NSFW content detected and removed. — {message.from_user.first_name}")
+            warn = await client.send_message(message.chat.id, f"âš ï¸ NSFW content detected and removed. â€” {message.from_user.first_name}")
             asyncio.create_task(schedule_warning_delete(client, warn.chat.id, warn.message_id, WARNING_TTL))
         except:
             warn = None
@@ -469,16 +469,16 @@ async def nsfw_handler(client, message):
                 me = await client.get_me()
                 bot_member = await client.get_chat_member(message.chat.id, me.id)
                 if bot_member.status not in ("administrator", "creator"):
-                    await client.send_message(message.chat.id, "⚠️ I need admin permissions to mute users automatically. Please grant admin.")
+                    await client.send_message(message.chat.id, "âš ï¸ I need admin permissions to mute users automatically. Please grant admin.")
                     return
                 until_ts = int(time.time()) + 10 * 365 * 24 * 3600
                 perm = types.ChatPermissions(can_send_messages=False, can_send_media_messages=False, can_send_other_messages=False, can_add_web_page_previews=False)
                 await client.restrict_chat_member(message.chat.id, int(uid), permissions=perm, until_date=until_ts)
-                await client.send_message(message.chat.id, f"🚫 User [{uid}](tg://user?id={uid}) muted for repeated NSFW spam.", parse_mode="md")
+                await client.send_message(message.chat.id, f"ðŸš« User [{uid}](tg://user?id={uid}) muted for repeated NSFW spam.", parse_mode="md")
                 NSFW_COUNTERS.setdefault(chatid, {}).pop(uid, None)
             except Exception:
                 try:
-                    await client.send_message(message.chat.id, "⚠️ Failed to mute the user. Ensure I have restrict permissions.")
+                    await client.send_message(message.chat.id, "âš ï¸ Failed to mute the user. Ensure I have restrict permissions.")
                 except:
                     pass
 
@@ -510,9 +510,9 @@ async def main():
     try:
         await bot.start()
         me = await bot.get_me()
-        print(f"🩵 ShieldX started. Bot @{me.username} ({me.id})")
+        print(f"ðŸ©µ ShieldX started. Bot @{me.username} ({me.id})")
     except Exception as e:
-        print("❌ Failed to start Pyrogram client:", e)
+        print("âŒ Failed to start Pyrogram client:", e)
         return
 
     # start background tasks
@@ -529,3 +529,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

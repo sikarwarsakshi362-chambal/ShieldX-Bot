@@ -1,4 +1,4 @@
-# bot.py (ShieldX v3.1 Final Moderate)
+﻿# bot.py (ShieldX v3.1 Final Moderate)
 # Keep this file as a single module. Replace your existing bot.py with this.
 import asyncio
 import json
@@ -60,34 +60,34 @@ DATA_FILE = "data.json"  # persistent per-chat settings
 # ---------------------------
 MESSAGES = {
     "en-in": {
-        "start_dm": "🛡️ *ShieldX Protection*\nI keep your groups clean. Use buttons below.",
-        "start_group": "🛡️ ShieldX active in this group.",
-        "help_dm": "✨ *ShieldX Commands*\n\n• /clean [time] — enable auto-clean (admins)\n• /clean off — disable auto-clean\n• /cleanall — delete last 24h media (owner)\n• /nsfw on|off|status — NSFW detection\n• /status — system health (DM)\n• /reload — owner only\n\nDefault auto-clean: 30 minutes.",
-        "help_group": "📩 Sent you a DM with commands.",
-        "auto_on": "✅ Auto-clean enabled — interval: {t}.",
-        "auto_off": "🛑 Auto-clean disabled.",
-        "auto_set": "✅ Auto-clean set to {t}.",
-        "cleanall_start": "🧹 Clearing media from last 24 hours...",
-        "cleanall_done": "✅ {n} media items removed (last 24h).",
-        "only_admin": "⚠️ Only group admins can use this.",
-        "only_owner": "⚠️ Only group owner or co-owner can use this.",
-        "status_text": "🧹 Auto-clean: {on} | Interval: {t}",
-        "ping_text": "🏓 Pong! {ms}ms",
+        "start_dm": "ðŸ›¡ï¸ *ShieldX Protection*\nI keep your groups clean. Use buttons below.",
+        "start_group": "ðŸ›¡ï¸ ShieldX active in this group.",
+        "help_dm": "âœ¨ *ShieldX Commands*\n\nâ€¢ /clean [time] â€” enable auto-clean (admins)\nâ€¢ /clean off â€” disable auto-clean\nâ€¢ /cleanall â€” delete last 24h media (owner)\nâ€¢ /nsfw on|off|status â€” NSFW detection\nâ€¢ /status â€” system health (DM)\nâ€¢ /reload â€” owner only\n\nDefault auto-clean: 30 minutes.",
+        "help_group": "ðŸ“© Sent you a DM with commands.",
+        "auto_on": "âœ… Auto-clean enabled â€” interval: {t}.",
+        "auto_off": "ðŸ›‘ Auto-clean disabled.",
+        "auto_set": "âœ… Auto-clean set to {t}.",
+        "cleanall_start": "ðŸ§¹ Clearing media from last 24 hours...",
+        "cleanall_done": "âœ… {n} media items removed (last 24h).",
+        "only_admin": "âš ï¸ Only group admins can use this.",
+        "only_owner": "âš ï¸ Only group owner or co-owner can use this.",
+        "status_text": "ðŸ§¹ Auto-clean: {on} | Interval: {t}",
+        "ping_text": "ðŸ“ Pong! {ms}ms",
     },
     "hi": {
-        "start_dm": "🛡️ ShieldX — आपका auto-clean सहायक। नीचे बटन्स देखें।",
-        "start_group": "🛡️ ShieldX समूह में सक्रिय है।",
-        "help_dm": "कमांड:\n/clean [time]\n/clean off\n/cleanall\n/nsfw on|off|status\n/status\n/reload",
-        "help_group": "कमांड DM में भेज दी गई हैं।",
-        "auto_on": "✅ Auto-clean चालू — अंतराल: {t}.",
-        "auto_off": "🛑 Auto-clean बंद किया गया।",
-        "auto_set": "✅ Auto-clean सेट किया गया — अंतराल {t}.",
-        "cleanall_start": "🧹 पिछले 24 घंटे के मीडिया हटाए जा रहे हैं...",
-        "cleanall_done": "✅ {n} मीडिया हटाए गए (पिछले 24 घंटे)।",
-        "only_admin": "⚠️ केवल group admins उपयोग कर सकते हैं।",
-        "only_owner": "⚠️ केवल group owner या co-owner उपयोग कर सकते हैं।",
+        "start_dm": "ðŸ›¡ï¸ ShieldX â€” à¤†à¤ªà¤•à¤¾ auto-clean à¤¸à¤¹à¤¾à¤¯à¤•à¥¤ à¤¨à¥€à¤šà¥‡ à¤¬à¤Ÿà¤¨à¥à¤¸ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤",
+        "start_group": "ðŸ›¡ï¸ ShieldX à¤¸à¤®à¥‚à¤¹ à¤®à¥‡à¤‚ à¤¸à¤•à¥à¤°à¤¿à¤¯ à¤¹à¥ˆà¥¤",
+        "help_dm": "à¤•à¤®à¤¾à¤‚à¤¡:\n/clean [time]\n/clean off\n/cleanall\n/nsfw on|off|status\n/status\n/reload",
+        "help_group": "à¤•à¤®à¤¾à¤‚à¤¡ DM à¤®à¥‡à¤‚ à¤­à¥‡à¤œ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¤‚à¥¤",
+        "auto_on": "âœ… Auto-clean à¤šà¤¾à¤²à¥‚ â€” à¤…à¤‚à¤¤à¤°à¤¾à¤²: {t}.",
+        "auto_off": "ðŸ›‘ Auto-clean à¤¬à¤‚à¤¦ à¤•à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾à¥¤",
+        "auto_set": "âœ… Auto-clean à¤¸à¥‡à¤Ÿ à¤•à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾ â€” à¤…à¤‚à¤¤à¤°à¤¾à¤² {t}.",
+        "cleanall_start": "ðŸ§¹ à¤ªà¤¿à¤›à¤²à¥‡ 24 à¤˜à¤‚à¤Ÿà¥‡ à¤•à¥‡ à¤®à¥€à¤¡à¤¿à¤¯à¤¾ à¤¹à¤Ÿà¤¾à¤ à¤œà¤¾ à¤°à¤¹à¥‡ à¤¹à¥ˆà¤‚...",
+        "cleanall_done": "âœ… {n} à¤®à¥€à¤¡à¤¿à¤¯à¤¾ à¤¹à¤Ÿà¤¾à¤ à¤—à¤ (à¤ªà¤¿à¤›à¤²à¥‡ 24 à¤˜à¤‚à¤Ÿà¥‡)à¥¤",
+        "only_admin": "âš ï¸ à¤•à¥‡à¤µà¤² group admins à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤",
+        "only_owner": "âš ï¸ à¤•à¥‡à¤µà¤² group owner à¤¯à¤¾ co-owner à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤",
         "status_text": "Auto-clean: {on} | Interval: {t}",
-        "ping_text": "🏓 Pong! {ms}ms",
+        "ping_text": "ðŸ“ Pong! {ms}ms",
     }
 }
 DEFAULT_LOCALE = "en-in"
@@ -97,3 +97,4 @@ SUPPORTED_LOCALES = list(MESSAGES.keys())
 # STORAGE HANDLING
 # ---------------------------
 def
+

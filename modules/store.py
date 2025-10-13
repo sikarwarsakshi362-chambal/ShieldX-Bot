@@ -74,3 +74,4 @@ def set_muted(user_id):
 def is_muted(user_id):
     data = _load()
     return data["users"].get(str(user_id), {}).get("muted", False)
+
