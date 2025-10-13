@@ -1,7 +1,7 @@
 pyrogram==2.0.106
 tgcrypto==1.2.5
-pillow
-requests
-aiohttp
-python-dotenv
-flask
+Flask==3.0.3
+python-dotenv==1.0.1
+requests==2.32.3
+aiohttp==3.10.5
+pillow==10.4.0
