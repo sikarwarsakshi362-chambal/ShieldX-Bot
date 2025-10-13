@@ -91,3 +91,28 @@ async def schedule_delete(client, chat_id, msg_id, delay):
 
 print("🛡️ ShieldX Cleaner Bot Active...")
 app.run()
+# 🛡️ ShieldX Anti-Suspend Ping
+from flask import Flask
+from threading import Thread
+import requests, time, os
+
+app = Flask('ShieldX KeepAlive')
+
+@app.route('/')
+def home():
+    return "🛡️ ShieldX Bot Active", 200
+
+def run():
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+    while True:
+        try:
+            time.sleep(280)
+            requests.get("https://shieldx-bot.onrender.com")  # 🔁 Replace with your Render URL if different
+        except:
+            pass
+
+keep_alive()
