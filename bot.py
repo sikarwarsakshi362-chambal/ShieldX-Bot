@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# ShieldX v4.1 — Advanced moderation + batch-clean + NSFW warn/mute rules
-# NOTE: This file is an enhanced drop-in replacement — nothing removed, only additions.
+# ShieldX v4.1 — Advanced moderation + batch-clean (silent summary) + NSFW warn/mute rules
+# NOTE: Drop-in replacement — nothing removed deliberately.
 
 import asyncio
 import json
@@ -114,9 +114,9 @@ MESSAGES = {
         "nsfw_muted": "🚫 User {name} muted permanently for rapid NSFW spam.",
         "need_admin_bot": "⚠️ I need admin permissions with *delete messages* to perform this action. Please grant admin and try again.",
         "no_media_found": "ℹ️ No media messages found in the requested range.",
-        "clean_in_progress": "🧹 Cleaning media from last {t} — running in safe batch mode. Please wait...",
-        "clean_batch": "🧹 Cleaning batch {i}/{total_batches} — deleted {n} so far...",
-        "clean_summary": "✅ Cleaned {n} media items across {batches} batches (last {t}).",
+        "clean_in_progress": "🧹 Cleaning in progress... (you will get a single summary when done)",
+        "clean_summary": "✅ Deleted {n} media/messages in {batches} batch(es) (last {t}).",
+        "clean_nothing": "✅ Nothing major found to clean. Area already clear.",
     },
     "hi": {
         "start_dm": "🛡️ *ShieldX सुरक्षा*\nमैं आपके ग्रुप्स को साफ़ रखता हूँ। नीचे बटन देखें।",
@@ -138,9 +138,9 @@ MESSAGES = {
         "nsfw_muted": "🚫 उपयोगकर्ता {name} को तेज़ NSFW स्पैम के लिए स्थायी रूप से म्यूट किया गया।",
         "need_admin_bot": "⚠️ मुझे admin पर *delete messages* की अनुमति चाहिए ताकि मैं यह कर सकूँ। कृपया अनुमति दे और दोबारा कोशिश करें।",
         "no_media_found": "ℹ️ अनुरोधित समय सीमा में कोई मीडिया संदेश नहीं मिला।",
-        "clean_in_progress": "🧹 पिछले {t} की मीडिया हटाई जा रही है... कृपया प्रतीक्षा करें...",
-        "clean_batch": "🧹 बैच {i}/{total_batches} साफ हो रहा है — अब तक हटाए गए: {n}...",
-        "clean_summary": "✅ कुल {n} मीडिया हटाए गए {batches} बैचों में (पिछले {t})।",
+        "clean_in_progress": "🧹 साफ़ किया जा रहा है... (अंतिम सारांश बाद में आएगा)",
+        "clean_summary": "✅ कुल {n} मीडिया/संदेश हटाए गए {batches} बैचों में (पिछले {t})।",
+        "clean_nothing": "✅ साफ रखने की ज़रूरत नहीं।",
     },
 }
 
@@ -290,7 +290,6 @@ async def start_cmd(client, message):
         header = text + "\n\n✅ *Status:* Active & protecting groups.\n⏱️ *Keepalive:* 5s ping enabled (Render)."
         await message.reply_text(header, reply_markup=types.InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
     else:
-        # nicer group message (keeps original)
         await message.reply(get_msg("start_group", message.chat.id) + " — ShieldX protecting this group 24x7.", quote=False)
 
 @bot.on_message(filters.command("help", prefixes=["/", "!"]))
@@ -323,7 +322,6 @@ async def ping_cmd(client, message):
     txt += f"\n\n🔹 Bot: @{bot_user.username}\n🔹 Uptime check: OK"
     await m.edit_text(txt)
 
-# status/lang/cleanstatus/cleanon/cleanoff unchanged (kept original behavior)
 @bot.on_message(filters.command("status", prefixes=["/", "!"]) & filters.group)
 async def status_cmd(client, message):
     cfg = ensure_chat(message.chat.id)
@@ -372,12 +370,11 @@ async def cleanoff_cmd(client, message):
     await message.reply("🛑 Global cleaning DISABLED.", quote=False)
 
 # ---------------------------
-# Batch delete with progress
+# Batch delete (silent progress: only initial + one final edit)
 # ---------------------------
-async def batch_delete_media_in_range_with_progress(client, chat_id: int, minutes: int, progress_msg=None, batch_size=100):
+async def batch_delete_media_in_range_silent(client, chat_id: int, minutes: int, progress_msg=None, batch_size=100):
     deleted = 0
     cutoff = datetime.utcnow() - timedelta(minutes=minutes)
-    # collect media message ids in range first (to compute batches)
     msg_ids = []
     try:
         async for msg in client.get_chat_history(chat_id, limit=5000):
@@ -399,28 +396,20 @@ async def batch_delete_media_in_range_with_progress(client, chat_id: int, minute
         end = min(start + batch_size, total)
         batch = msg_ids[start:end]
         try:
-            # delete as list where supported
             await client.delete_messages(chat_id, batch)
             deleted += len(batch)
-        except Exception as e:
-            # fallback: delete one-by-one if bulk fails
+        except Exception:
+            # fallback one-by-one
             for mid in batch:
                 try:
                     await client.delete_messages(chat_id, mid)
                     deleted += 1
-                except Exception:
+                except:
                     pass
-        # update progress message if provided
-        if progress_msg:
-            try:
-                await progress_msg.edit_text(get_msg("clean_batch", chat_id, i+1, batches, n=deleted))
-            except:
-                pass
-        # small delay to avoid flood waits
+        # small delay to reduce risk of flood wait
         await asyncio.sleep(1)
     return deleted
 
-# /clean (batch + progress)
 @bot.on_message(filters.command("clean", prefixes=["/", "!"]) & filters.group)
 async def clean_cmd(client, message):
     if not is_clean_enabled_global():
@@ -460,15 +449,14 @@ async def clean_cmd(client, message):
     save_data(DATA)
 
     human = fmt_timespan(mins)
-    start_msg = await message.reply(get_msg("clean_in_progress", message.chat.id, t=human), quote=False)
-    deleted = await batch_delete_media_in_range_with_progress(client, message.chat.id, mins, progress_msg=start_msg, batch_size=100)
+    start_msg = await message.reply(get_msg("clean_in_progress", message.chat.id), quote=False)
+    deleted = await batch_delete_media_in_range_silent(client, message.chat.id, mins, progress_msg=None, batch_size=100)
     if deleted == 0:
-        await start_msg.edit_text(get_msg("no_media_found", message.chat.id), quote=False)
+        await start_msg.edit_text(get_msg("clean_nothing", message.chat.id), quote=False)
     else:
         batches = (deleted + 100 - 1) // 100
         await start_msg.edit_text(get_msg("clean_summary", message.chat.id, n=deleted, batches=batches, t=human), quote=False)
 
-# /cleanall similar to clean but for 1440 minutes
 @bot.on_message(filters.command("cleanall", prefixes=["/", "!"]) & filters.group)
 async def cleanall_cmd(client, message):
     user_id = message.from_user.id
@@ -494,15 +482,14 @@ async def cleanall_cmd(client, message):
         pass
 
     human = fmt_timespan(1440)
-    start_msg = await message.reply(get_msg("cleanall_start", message.chat.id, t=human), quote=False)
-    deleted = await batch_delete_media_in_range_with_progress(client, message.chat.id, 1440, progress_msg=start_msg, batch_size=100)
+    start_msg = await message.reply(get_msg("clean_in_progress", message.chat.id), quote=False)
+    deleted = await batch_delete_media_in_range_silent(client, message.chat.id, 1440, progress_msg=None, batch_size=100)
     if deleted == 0:
         await start_msg.edit_text(get_msg("no_media_found", message.chat.id), quote=False)
     else:
         batches = (deleted + 100 - 1) // 100
         await start_msg.edit_text(get_msg("cleanall_done", message.chat.id, n=deleted, t=human), quote=False)
 
-# warnreset unchanged
 @bot.on_message(filters.command("warnreset", prefixes=["/", "!"]))
 async def warnreset_cmd(client, message):
     try:
@@ -639,7 +626,6 @@ async def media_nsfw_handler(client, message):
 
         # check rapid spam condition: if last NSFW_SPAM_COUNT timestamps exist and fit within NSFW_WINDOW_SEC
         if len(arr) >= NSFW_SPAM_COUNT:
-            # check time window between earliest of last N and latest
             last_n = arr[-NSFW_SPAM_COUNT:]
             if (last_n[-1] - last_n[0]) <= NSFW_WINDOW_SEC:
                 # rapid spam -> permanent mute
@@ -659,13 +645,11 @@ async def media_nsfw_handler(client, message):
                         await client.restrict_chat_member(chat_id, uid, permissions=perm, until_date=until_ts)
                         name = message.from_user.first_name or str(uid)
                         await client.send_message(chat_id, get_msg("nsfw_muted", chat_id, name=name))
-                        # DM owners
                         for o in OWNER_IDS:
                             try:
                                 await client.send_message(o, f"🚨 User {name} ({uid}) muted in {chat_id} for rapid NSFW spam.")
                             except:
                                 pass
-                        # clear counters for that user
                         NSFW_TRACKERS.setdefault(str(chat_id), {}).pop(str(uid), None)
                 except Exception as e:
                     print("Failed to mute user for NSFW spam:", e)
@@ -675,15 +659,12 @@ async def media_nsfw_handler(client, message):
                         pass
                 return
             else:
-                # reached N warns but not rapid - send warn and reset counter (per request: warn, not mute)
+                # reached N warns but not rapid - warn once and clear counters
                 try:
                     name = message.from_user.first_name or str(uid)
                     await client.send_message(chat_id, get_msg("nsfw_warn", chat_id, name=name, count=len(arr)))
-                    # schedule deletion of warn
-                    warn_msg = await client.send_message(chat_id, '')  # placeholder to get msg for deletion scheduling (we already sent above)
                 except:
                     pass
-                # reset counters after reached N (to avoid indefinite accumulation)
                 NSFW_TRACKERS.setdefault(str(chat_id), {}).pop(str(uid), None)
                 return
 
@@ -692,7 +673,6 @@ async def media_nsfw_handler(client, message):
             name = message.from_user.first_name or str(uid)
             count = len(arr)
             warn = await client.send_message(chat_id, get_msg("nsfw_warn", chat_id, name=name, count=count))
-            # schedule auto-delete of warning after WARNING_TTL
             asyncio.create_task(schedule_warning_delete(client, warn.chat.id, warn.message_id, WARNING_TTL))
         except Exception:
             pass
@@ -757,7 +737,7 @@ def keep_alive_sync():
         time.sleep(5)
 
 # ---------------------------
-# MAIN
+# Main run
 # ---------------------------
 async def main():
     threading.Thread(target=run_flask, daemon=True).start()
