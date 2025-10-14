@@ -131,6 +131,34 @@ def log_module_status():
         print("⚠️ NSFW detection will run in fallback mode if modules are missing (no crash).")
 
 # --------------------------
+# Helper: allow owner OR bot OR admin
+# --------------------------
+async def is_admin_or_owner(client, chat_id: int, user_id: int) -> bool:
+    """
+    Return True if user_id is:
+      - OWNER_ID (configured owner)
+      - the bot itself (so 'self' commands allowed)
+      - an administrator/creator of the chat
+    This fixes the 'same ID' problem where owner and bot share the same identity.
+    """
+    try:
+        # owner always allowed
+        if user_id == OWNER_ID:
+            return True
+        # bot itself allowed
+        me = await client.get_me()
+        if me and getattr(me, "id", None) == user_id:
+            return True
+        # check chat membership/roles
+        member = await client.get_chat_member(chat_id, user_id)
+        if getattr(member, "status", None) in ("administrator", "creator"):
+            return True
+    except Exception:
+        # any failure => deny (fail-safe)
+        pass
+    return False
+
+# --------------------------
 # Local NSFW heuristic
 # --------------------------
 def is_nsfw_local(image_path: str, skin_ratio_threshold: float = 0.30) -> bool:
@@ -242,9 +270,10 @@ async def ping_cmd(client, message):
 # --------------------------
 @bot.on_message(filters.command(["clean", "clean_on"], prefixes=["/", "!", "."]))
 async def clean_on_cmd(client, msg):
+    # admin/owner/bot-only
     try:
-        member = await client.get_chat_member(msg.chat.id, msg.from_user.id)
-        if member.status not in ("administrator", "creator"):
+        user_id = msg.from_user.id if msg.from_user else None
+        if not user_id or not await is_admin_or_owner(client, msg.chat.id, user_id):
             return
     except:
         return
@@ -263,9 +292,10 @@ async def clean_on_cmd(client, msg):
 
 @bot.on_message(filters.command("clean_custom"))
 async def clean_custom_cmd(client, msg):
+    # admin/owner/bot-only
     try:
-        member = await client.get_chat_member(msg.chat.id, msg.from_user.id)
-        if member.status not in ("administrator", "creator"):
+        user_id = msg.from_user.id if msg.from_user else None
+        if not user_id or not await is_admin_or_owner(client, msg.chat.id, user_id):
             return
     except:
         return
@@ -309,9 +339,10 @@ async def clean_custom_cmd(client, msg):
 
 @bot.on_message(filters.command(["clean_off", "cleanoff"], prefixes=["/", "!", "."]))
 async def clean_off_cmd(client, msg):
+    # admin/owner/bot-only
     try:
-        member = await client.get_chat_member(msg.chat.id, msg.from_user.id)
-        if member.status not in ("administrator", "creator"):
+        user_id = msg.from_user.id if msg.from_user else None
+        if not user_id or not await is_admin_or_owner(client, msg.chat.id, user_id):
             return
     except:
         return
@@ -331,9 +362,10 @@ async def clean_off_cmd(client, msg):
 
 @bot.on_message(filters.command("cleanstatus"))
 async def clean_status_cmd(client, msg):
+    # admin/owner/bot-only
     try:
-        member = await client.get_chat_member(msg.chat.id, msg.from_user.id)
-        if member.status not in ("administrator", "creator"):
+        user_id = msg.from_user.id if msg.from_user else None
+        if not user_id or not await is_admin_or_owner(client, msg.chat.id, user_id):
             return
     except:
         return
@@ -345,9 +377,10 @@ async def clean_status_cmd(client, msg):
 
 @bot.on_message(filters.command("cleanall"))
 async def cleanall_cmd(client, msg):
+    # admin/owner/bot-only
     try:
-        member = await client.get_chat_member(msg.chat.id, msg.from_user.id)
-        if member.status not in ("administrator", "creator"):
+        user_id = msg.from_user.id if msg.from_user else None
+        if not user_id or not await is_admin_or_owner(client, msg.chat.id, user_id):
             return
     except:
         return
@@ -486,9 +519,10 @@ async def schedule_delete(client, chat_id, msg_id, delay):
 # --------------------------
 @bot.on_message(filters.command("nsfw_on"))
 async def nsfw_on_cmd(client, msg):
+    # admin/owner/bot-only
     try:
-        member = await client.get_chat_member(msg.chat.id, msg.from_user.id)
-        if member.status not in ("administrator", "creator"):
+        user_id = msg.from_user.id if msg.from_user else None
+        if not user_id or not await is_admin_or_owner(client, msg.chat.id, user_id):
             return
     except:
         return
@@ -497,9 +531,10 @@ async def nsfw_on_cmd(client, msg):
 
 @bot.on_message(filters.command("nsfw_off"))
 async def nsfw_off_cmd(client, msg):
+    # admin/owner/bot-only
     try:
-        member = await client.get_chat_member(msg.chat.id, msg.from_user.id)
-        if member.status not in ("administrator", "creator"):
+        user_id = msg.from_user.id if msg.from_user else None
+        if not user_id or not await is_admin_or_owner(client, msg.chat.id, user_id):
             return
     except:
         return
