@@ -739,3 +739,32 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Shutdown requested, exiting...")
+# === KEEP-ALIVE SYSTEM (Render Safe, 5 sec) ===
+from threading import Thread
+import requests
+from flask import Flask
+
+def keep_alive():
+    app = Flask(__name__)
+
+    @app.route('/')
+    def home():
+        return "?? ShieldX is live."
+
+    def run():
+        app.run(host="0.0.0.0", port=10000)
+
+    def ping():
+        while True:
+            try:
+                requests.get("https://shieldx-bot-1.onrender.com")
+            except Exception:
+                pass
+            time.sleep(5)
+
+    Thread(target=run).start()
+    Thread(target=ping).start()
+
+keep_alive()
+
+print("?? ShieldX connected to Telegram & active 24x7")
