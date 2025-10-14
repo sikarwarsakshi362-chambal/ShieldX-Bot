@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List
 
 import aiohttp
+import requests
 from flask import Flask
 from pyrogram import Client, filters, types
 from pyrogram.errors import RPCError, ChatWriteForbidden
@@ -29,6 +30,8 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 OWNER_ID_RAW = os.getenv("OWNER_ID", "")  # allow comma-separated list (owner,co-owner,...)
 HF_API_KEY = os.getenv("HF_API_KEY", "")  # optional HuggingFace key (free or your key)
 RENDER_HEALTH_URL = os.getenv("RENDER_HEALTH_URL", "")  # optional health url
+# also allow common alternate env names for external url
+RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "") or os.getenv("RENDER_URL", "") or os.getenv("PRIMARY_URL", "")
 
 # parse owners/co-owners
 def parse_owner_ids(s: str) -> List[int]:
@@ -676,6 +679,24 @@ async def watchdog_task(client):
         await asyncio.sleep(60)
 
 # ---------------------------
+# Synchronous 5-second keep-alive (to prevent Render free-sleep)
+# ---------------------------
+def keep_alive_sync():
+    # choose URL priority: RENDER_HEALTH_URL > RENDER_EXTERNAL_URL > RENDER_URL/PRIMARY_URL
+    url = RENDER_HEALTH_URL or RENDER_EXTERNAL_URL or None
+    if not url:
+        print("⚠️ No render keepalive URL provided in env (RENDER_HEALTH_URL or RENDER_EXTERNAL_URL). Skipping 5s pings.")
+        return
+    while True:
+        try:
+            # timeout small to not hang
+            requests.get(url, timeout=10)
+            # do NOT print every successful ping to avoid huge logs
+        except Exception as e:
+            print("⚠️ Render keepalive ping failed:", e)
+        time.sleep(5)
+
+# ---------------------------
 # MAIN
 # ---------------------------
 async def main():
@@ -700,6 +721,20 @@ async def main():
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
+    # apply nest_asyncio if available to avoid "event loop already running" in some environments
+    try:
+        import nest_asyncio
+        nest_asyncio.apply()
+    except Exception:
+        # not fatal; continue without it
+        print("⚠️ nest_asyncio not available or failed to apply — continuing.")
+
+    # start the 5-second synchronous keep-alive in a daemon thread (won't block shutdown)
+    try:
+        threading.Thread(target=keep_alive_sync, daemon=True).start()
+    except Exception as e:
+        print("⚠️ Failed to start keep_alive_sync thread:", e)
+
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
