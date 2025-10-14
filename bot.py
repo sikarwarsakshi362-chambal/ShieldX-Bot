@@ -50,7 +50,6 @@ def keep_alive_sync():
     app.run(host="0.0.0.0", port=PORT)
 
 # === Text Constants (multi-language support store) ===
-# Minimal example: you can expand translations. Keys used across bot.
 LANG_STRINGS = {
     "en": {
         "start_dm_text": (
@@ -209,35 +208,35 @@ def is_nsfw_local(image_path: str, skin_ratio_threshold: float = 0.30) -> bool:
 # --------------------------
 # Periodic cleaner task per chat (auto-clean) - BATCH-WISE
 # --------------------------
-async def clean_media_periodically(chat_id: int, interval: int):
+async def clean_media_periodically(client, chat_id: int, interval: int):
     while True:
         try:
             deleted = 0
             batch = []
-            async for msg in bot.get_chat_history(chat_id, limit=500):
+            async for msg in client.get_chat_history(chat_id, limit=500):
                 if msg.media:
                     batch.append(msg.message_id)
                     if len(batch) >= 20:
                         try:
-                            await bot.delete_messages(chat_id, batch)
+                            await client.delete_messages(chat_id, batch)
                             deleted += len(batch)
                         except Exception:
                             # fallback: try individual deletes
                             for mid in batch:
                                 try:
-                                    await bot.delete_messages(chat_id, mid)
+                                    await client.delete_messages(chat_id, mid)
                                 except:
                                     pass
                         batch.clear()
                         await asyncio.sleep(2)  # short pause between batches
             if batch:
                 try:
-                    await bot.delete_messages(chat_id, batch)
+                    await client.delete_messages(chat_id, batch)
                     deleted += len(batch)
                 except Exception:
                     for mid in batch:
                         try:
-                            await bot.delete_messages(chat_id, mid)
+                            await client.delete_messages(chat_id, mid)
                         except:
                             pass
             if deleted:
@@ -329,7 +328,7 @@ async def clean_on_cmd(client, msg):
             clean_tasks[chat_id].cancel()
         except:
             pass
-    task = asyncio.create_task(clean_media_periodically(chat_id, interval))
+    task = asyncio.create_task(clean_media_periodically(client, chat_id, interval))
     clean_tasks[chat_id] = task
     clean_intervals[chat_id] = interval
     await msg.reply_text(t(chat_id, "clean_on"))
@@ -377,7 +376,7 @@ async def clean_custom_cmd(client, msg):
             clean_tasks[chat_id].cancel()
         except:
             pass
-    task = asyncio.create_task(clean_media_periodically(chat_id, seconds))
+    task = asyncio.create_task(clean_media_periodically(client, chat_id, seconds))
     clean_tasks[chat_id] = task
     clean_intervals[chat_id] = seconds
     await msg.reply_text(t(chat_id, "clean_custom", t=t))
