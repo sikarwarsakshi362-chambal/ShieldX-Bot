@@ -7,5 +7,13 @@ ShieldXBot.session*
 # Pyrogram sessions
 *.session
 *.session-journal
-# binaries
+
+# Binaries
 gcmcore.exe
+
+# Environment files
+.env
+*.log
+
+# Render temporary files
+__render_cache__/
