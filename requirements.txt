@@ -8,3 +8,4 @@ pillow==10.4.0
 nest_asyncio==1.6.0
 opencv-python==4.10.0.84
 numpy==2.1.2
+gunicorn==23.0.0
