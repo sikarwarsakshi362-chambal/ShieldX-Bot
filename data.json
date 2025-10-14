@@ -1,0 +1,15 @@
+{
+  "_global": {
+    "clean_enabled": true
+  },
+  "5204428223": {
+    "clean_on": false,
+    "delete_minutes": 30,
+    "lang": "en-in"
+  },
+  "-1003083459749": {
+    "clean_on": false,
+    "delete_minutes": 30,
+    "lang": "en-in"
+  }
+}
