@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# ShieldX v4.0 — Final Moderate Edition (drop-in replacement)
-# Keep secrets in .env: API_ID, API_HASH, BOT_TOKEN, OWNER_ID, HF_API_KEY, RENDER_HEALTH_URL / RENDER_EXTERNAL_URL
+# ShieldX v4.1 — Fixed & Moderate edition
+# Drop-in replacement for existing bot.py — structure preserved, logic corrected.
 
 import asyncio
 import json
@@ -10,7 +10,7 @@ import time
 import tempfile
 import shutil
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import aiohttp
 import requests
@@ -23,14 +23,15 @@ from dotenv import load_dotenv
 # LOAD ENV
 # ---------------------------
 load_dotenv()
-API_ID = int(os.getenv("API_ID", 0) or 0)
+API_ID = int(os.getenv("API_ID", 0))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-OWNER_ID_RAW = os.getenv("OWNER_ID", "")  # comma separated owner ids
-HF_API_KEY = os.getenv("HF_API_KEY", "")  # optional
-RENDER_HEALTH_URL = os.getenv("RENDER_HEALTH_URL", "")  # optional health url
+OWNER_ID_RAW = os.getenv("OWNER_ID", "")  # comma-separated owner ids
+HF_API_KEY = os.getenv("HF_API_KEY", "")  # optional HuggingFace key
+RENDER_HEALTH_URL = os.getenv("RENDER_HEALTH_URL", "")  # preferred keep-alive url
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "") or os.getenv("RENDER_URL", "") or os.getenv("PRIMARY_URL", "")
 
+# parse owners/co-owners
 def parse_owner_ids(s: str) -> List[int]:
     if not s:
         return []
@@ -49,12 +50,15 @@ OWNER_IDS = parse_owner_ids(OWNER_ID_RAW)
 # STORAGE (persistent)
 # ---------------------------
 DATA_FILE = "data.json"
+# Format:
+# { "_global": {"clean_enabled": True, "nsfw_enabled": True}, "<chat_id>": {"clean_on": bool, "delete_minutes": int, "lang": "en-in", "nsfw_on": True} }
+
 def load_data() -> Dict:
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except Exception:
             return {}
     return {}
 
@@ -62,17 +66,17 @@ def save_data(d: Dict):
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(d, f, ensure_ascii=False, indent=2)
-    except:
+    except Exception:
         pass
 
 DATA = load_data()
 if "_global" not in DATA:
-    DATA["_global"] = {"clean_enabled": True}
+    DATA["_global"] = {"clean_enabled": True, "nsfw_enabled": True}
 
 def ensure_chat(chat_id):
     cid = str(chat_id)
     if cid not in DATA:
-        DATA[cid] = {"clean_on": False, "delete_minutes": 30, "lang": "en-in"}
+        DATA[cid] = {"clean_on": False, "delete_minutes": 30, "lang": "en-in", "nsfw_on": True}
         save_data(DATA)
     return DATA[cid]
 
@@ -83,15 +87,22 @@ def set_clean_enabled_global(val: bool):
     DATA.setdefault("_global", {})["clean_enabled"] = bool(val)
     save_data(DATA)
 
+def is_nsfw_enabled_global():
+    return DATA.get("_global", {}).get("nsfw_enabled", True)
+
+def set_nsfw_enabled_global(val: bool):
+    DATA.setdefault("_global", {})["nsfw_enabled"] = bool(val)
+    save_data(DATA)
+
 # ---------------------------
-# MESSAGES / LOCALES
+# MESSAGES / LOCALES (kept minimal; can be expanded)
 # ---------------------------
 MESSAGES = {
     "en-in": {
         "start_dm": "🛡️ *ShieldX Protection*\nI keep your groups clean. Use buttons below.",
-        "start_group": "🛡️ ShieldX active in this group.\nUse /help to see commands.",
-        "help_dm": "✨ *ShieldX Commands*\n\n• /clean [time] — enable auto-clean (admins)\n• /cleanon | /cleanoff — toggle global clean (owner)\n• /cleanstatus — show status\n• /cleanall — delete media (owner/admin)\n• /warnreset <user_id> — reset warns (owner/admin)\n• /lang <code> — set language\n• /status — show current status\n\nDefault auto-clean: 30 minutes.",
-        "help_group": "📩 I sent you commands in DM.",
+        "start_group": "🛡️ ShieldX active in this group.",
+        "help_dm": "✨ *ShieldX Commands*\n\n• /clean [time] — enable auto-clean (admins)\n• /cleanoff — disable auto-clean (owner)\n• /cleanon — enable auto-clean (owner)\n• /cleanstatus — show status\n• /cleanall — delete media (owner/admin)\n• /warnreset <user_id> — reset warns (owner/admin)\n• /lang <code> — set language\n• /status — show current status\n\nDefault auto-clean: 30 minutes.",
+        "help_group": "📩 Sent you a DM with commands.",
         "auto_on": "✅ Auto-clean enabled — media will be cleared every {t}.",
         "auto_off": "🛑 Auto-clean disabled.",
         "auto_set": "✅ Auto-clean enabled — interval set to {t}.",
@@ -101,15 +112,16 @@ MESSAGES = {
         "only_admin": "⚠️ Only group admins can use this.",
         "only_owner": "⚠️ Only group owner or configured co-owners can use this.",
         "status_text": "🧹 Auto-clean: {on} | Interval: {t}",
-        "ping_text": "🏓 Pong! {ms}ms",
-        "nsfw_deleted": "⚠️ NSFW content detected and removed. Follow group rules.",
-        "nsfw_warn": "⚠️ NSFW detected — do not send adult content. Repeated violations will result in mute.",
+        "ping_text": "🩵 ShieldX Online!\n⚡ {ms}ms | Uptime: {uptime}",
+        "nsfw_deleted": "⚠️ NSFW detected — content removed.",
+        "nsfw_warn": "⚠️ NSFW content detected — please follow group rules.",
         "nsfw_muted": "🚫 User {name} muted permanently for repeated NSFW spam.",
+        "nsfw_off": "ℹ️ NSFW detection is disabled for this chat.",
     },
     "hi": {
         "start_dm": "🛡️ *ShieldX सुरक्षा*\nमैं आपके ग्रुप्स को साफ़ रखता हूँ। नीचे बटन देखें।",
-        "start_group": "🛡️ ShieldX समूह में सक्रिय है।\n/ help कमांड देखें।",
-        "help_dm": "कमांड:\n/clean [time]\n/cleanon\n/cleanoff\n/cleanstatus\n/cleanall\n/warnreset <user_id>\n/lang <code>\n/status",
+        "start_group": "🛡️ ShieldX समूह में सक्रिय है।",
+        "help_dm": "कमांड:\n/clean [time]\n/cleanoff\n/cleanon\n/cleanstatus\n/cleanall\n/warnreset <user_id>\n/lang <code>\n/status",
         "help_group": "कमांड DM में भेज दी गई हैं।",
         "auto_on": "✅ Auto-clean चालू — हर {t} पर साफ़ करेगा।",
         "auto_off": "🛑 Auto-clean बंद किया गया।",
@@ -120,25 +132,33 @@ MESSAGES = {
         "only_admin": "⚠️ केवल group admins उपयोग कर सकते हैं।",
         "only_owner": "⚠️ केवल group owner या configured co-owners उपयोग कर सकते हैं।",
         "status_text": "🧹 Auto-clean: {on} | Interval: {t}",
-        "ping_text": "🏓 Pong! {ms}ms",
-        "nsfw_deleted": "⚠️ NSFW सामग्री मिली और हटा दी गई। नियमों का पालन करें।",
-        "nsfw_warn": "⚠️ NSFW मिला — कृपया वयस्क सामग्री न भेजें। बार-बार करने पर म्यूट होगा।",
-        "nsfw_muted": "🚫 उपयोगकर्ता {name} को बार-बार NSFW पोस्ट करने पर स्थायी म्यूट किया गया।",
+        "ping_text": "🩵 ShieldX ऑनलाइन!\n⚡ {ms}ms | Uptime: {uptime}",
+        "nsfw_deleted": "⚠️ NSFW मिली — सामग्री हटा दी गई।",
+        "nsfw_warn": "⚠️ NSFW सामग्री मिली — कृपया नियमों का पालन करें।",
+        "nsfw_muted": "🚫 उपयोगकर्ता {name} को बार-बार NSFW करने पर स्थायी म्युट किया गया।",
+        "nsfw_off": "ℹ️ इस चैट के लिए NSFW डिटेक्शन बंद है।",
     },
 }
 
 DEFAULT_LOCALE = "en-in"
+
 def get_msg(key: str, chat_id, **kwargs):
     cfg = ensure_chat(chat_id)
     lang = cfg.get("lang", DEFAULT_LOCALE)
     template = MESSAGES.get(lang, MESSAGES.get(DEFAULT_LOCALE)).get(key, "")
-    return template.format(**kwargs)
+    try:
+        return template.format(**kwargs)
+    except Exception:
+        return template
 
 # ---------------------------
 # APP INIT
 # ---------------------------
 app = Flask(__name__)
 bot = Client("ShieldXBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+# uptime
+START_TIME = datetime.utcnow()
 
 # ---------------------------
 # Utilities: time parsing, fmt
@@ -152,7 +172,7 @@ def fmt_timespan(minutes: int) -> str:
         return f"{hours} hour(s)"
     return f"{minutes} minute(s)"
 
-def parse_time_token(token: str):
+def parse_time_token(token: str) -> Optional[int]:
     token = token.strip().lower()
     try:
         if token.endswith("m"):
@@ -171,7 +191,7 @@ def parse_time_token(token: str):
     return None
 
 # ---------------------------
-# NSFW (HuggingFace) settings
+# NSFW settings
 # ---------------------------
 HF_MODEL = "Falconsai/nsfw_image_detection"
 HF_API = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
@@ -179,13 +199,18 @@ HF_HEADERS = {"Authorization": f"Bearer {HF_API_KEY}"} if HF_API_KEY else {}
 
 NSFW_CONF_THRESHOLD = 0.8
 NSFW_WINDOW_SEC = 3
-NSFW_SPAM_COUNT = 5  # 5 media in window -> mute
-WARNING_TTL = 60  # seconds to auto-delete normal warning
+NSFW_SPAM_COUNT = 5
+WARNING_TTL = 20  # seconds to auto-delete normal warning
 
-# per-chat per-user nsfw timestamps
+# trackers
 NSFW_TRACKERS: Dict[str, Dict[str, List[float]]] = {}
 
+# ---------------------------
+# Helper: call HF NSFW model async
+# ---------------------------
 async def call_hf_nsfw(file_path: str):
+    # If user hasn't provided HF_API_KEY, we'll still call (model public) but include no auth header.
+    # The function robustly handles failures and returns None on error.
     try:
         async with aiohttp.ClientSession() as session:
             with open(file_path, "rb") as f:
@@ -223,56 +248,49 @@ def run_flask():
 # COMMANDS
 # ---------------------------
 
-# /start - group reply preferred, DM fallback with buttons
+# /start
 @bot.on_message(filters.command("start", prefixes=["/", "!"]))
 async def start_cmd(client, message):
-    try:
+    cfg = ensure_chat(message.chat.id if message.chat else message.from_user.id)
+    if message.chat and message.chat.type == "private":
+        text = get_msg("start_dm", message.chat.id)
         me = await client.get_me()
         buttons = [
-            [
-                types.InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{me.username}?startgroup=true"),
-                types.InlineKeyboardButton("🛠 Support", url="https://t.me/ShieldXSupport"),
-            ],
+            [types.InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{me.username}?startgroup=new")],
             [types.InlineKeyboardButton("📘 Commands", callback_data="sx_help")],
         ]
-        markup = types.InlineKeyboardMarkup(buttons)
-
-        if message.chat and message.chat.type in ("group", "supergroup"):
-            # group: reply in group (no DM)
-            await message.reply_text(
-                "🛡️ ShieldX is active here!\nUse /help to view moderation commands.",
-                reply_markup=markup,
-                disable_web_page_preview=True,
-            )
-        else:
-            # private DM: friendly intro + buttons
-            await message.reply_text(
-                get_msg("start_dm", message.chat.id if message.chat else message.from_user.id),
-                reply_markup=markup,
-                disable_web_page_preview=True,
-            )
-    except Exception as e:
-        print("start_cmd error:", e)
+        try:
+            await message.reply_text(text, reply_markup=types.InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
+        except Exception:
+            pass
+    else:
+        try:
+            await message.reply(get_msg("start_group", message.chat.id), quote=False)
+        except Exception:
+            pass
 
 # /help
 @bot.on_message(filters.command("help", prefixes=["/", "!"]))
 async def help_cmd(client, message):
-    try:
-        if message.chat and message.chat.type == "private":
+    if message.chat and message.chat.type == "private":
+        try:
             await message.reply_text(get_msg("help_dm", message.chat.id), disable_web_page_preview=True)
-        else:
-            # group: minimal inline feedback and DM the full help if possible
-            try:
-                await message.reply(get_msg("help_group", message.chat.id), quote=False)
-            except ChatWriteForbidden:
-                pass
-            # try to DM commands to user (best-effort)
+        except Exception:
+            pass
+    else:
+        try:
+            await message.reply(get_msg("help_group", message.chat.id), quote=False)
+            # Also DM the full help to the user when used in group
             try:
                 await client.send_message(message.from_user.id, get_msg("help_dm", message.chat.id), disable_web_page_preview=True)
+            except Exception:
+                pass
+        except ChatWriteForbidden:
+            # if bot cannot reply in group, try DM
+            try:
+                await client.send_message(message.from_user.id, get_msg("help_dm", message.chat.id))
             except:
                 pass
-    except Exception as e:
-        print("help_cmd error:", e)
 
 # callback for help button
 @bot.on_callback_query(filters.regex(r"^sx_help$"))
@@ -286,15 +304,12 @@ async def cb_help(client, query):
 # /ping
 @bot.on_message(filters.command("ping", prefixes=["/", "!"]))
 async def ping_cmd(client, message):
-    try:
-        t0 = time.time()
-        m = await message.reply("🏓 ...")
-        ms = int((time.time() - t0) * 1000)
-        uptime_seconds = int(time.time() - START_TS)
-        up = str(timedelta(seconds=uptime_seconds)).split(".")[0]
-        await m.edit_text(f"🩵 ShieldX Online!\n⚡ {ms}ms | Uptime: {up}")
-    except Exception as e:
-        print("ping_cmd error:", e)
+    t0 = time.time()
+    m = await message.reply("🏓 ...")
+    ms = int((time.time() - t0) * 1000)
+    uptime = datetime.utcnow() - START_TIME
+    up_str = str(uptime).split(".")[0]
+    await m.edit_text(get_msg("ping_text", message.chat.id, ms=ms, uptime=up_str))
 
 # /status (group)
 @bot.on_message(filters.command("status", prefixes=["/", "!"]) & filters.group)
@@ -305,7 +320,7 @@ async def status_cmd(client, message):
     await message.reply(get_msg("status_text", message.chat.id, on=on, t=t), quote=False)
 
 # /lang (group)
-@bot.on_message(filters.command("lang", prefixes=["/", "!"]) & filters.group)
+@bot.on_message(filters.command("lang", prefixes=["/", "!"]) & (filters.group | filters.private))
 async def lang_cmd(client, message):
     args = message.text.split()
     if len(args) < 2:
@@ -315,15 +330,16 @@ async def lang_cmd(client, message):
     if code not in MESSAGES:
         await message.reply(f"Unsupported. Supported: {', '.join(MESSAGES.keys())}", quote=False)
         return
-    cfg = ensure_chat(message.chat.id)
+    cfg = ensure_chat(message.chat.id if message.chat else message.from_user.id)
     cfg["lang"] = code
     save_data(DATA)
-    await message.reply(get_msg("start_group", message.chat.id) + f"\n🌐 Language: {code}", quote=False)
+    await message.reply(get_msg("start_group", message.chat.id if message.chat else message.from_user.id) + f"\n🌐 Language: {code}", quote=False)
 
 # /cleanstatus (anyone)
-@bot.on_message(filters.command("cleanstatus", prefixes=["/", "!"]) & filters.group)
+@bot.on_message(filters.command("cleanstatus", prefixes=["/", "!"]) & (filters.group | filters.private))
 async def cleanstatus_cmd(client, message):
-    cfg = ensure_chat(message.chat.id)
+    chat_id = message.chat.id if message.chat else message.from_user.id
+    cfg = ensure_chat(chat_id)
     global_state = is_clean_enabled_global()
     chat_on = cfg.get("clean_on", False)
     await message.reply(f"Global clean: {'ON' if global_state else 'OFF'}\nChat auto-clean: {'ON' if chat_on else 'OFF'}\nInterval: {fmt_timespan(cfg.get('delete_minutes',30))}", quote=False)
@@ -348,39 +364,34 @@ async def cleanoff_cmd(client, message):
     set_clean_enabled_global(False)
     await message.reply("🛑 Global cleaning DISABLED.", quote=False)
 
-# /clean [time] - admins can run in group; supports "on" / "off"
+# /nsfwon /nsfwoff (owner)
+@bot.on_message(filters.command("nsfwon", prefixes=["/", "!"]))
+async def nsfwon_cmd(client, message):
+    user_id = message.from_user.id
+    if user_id not in OWNER_IDS:
+        await message.reply("❌ Only owner can enable NSFW globally.", quote=False)
+        return
+    set_nsfw_enabled_global(True)
+    await message.reply("✅ NSFW detection ENABLED globally.", quote=False)
+
+@bot.on_message(filters.command("nsfwoff", prefixes=["/", "!"]))
+async def nsfwoff_cmd(client, message):
+    user_id = message.from_user.id
+    if user_id not in OWNER_IDS:
+        await message.reply("❌ Only owner can disable NSFW globally.", quote=False)
+        return
+    set_nsfw_enabled_global(False)
+    await message.reply("🛑 NSFW detection DISABLED globally.", quote=False)
+
+# /clean [time] - admins can run in group (also acts as toggle on)
 @bot.on_message(filters.command("clean", prefixes=["/", "!"]) & filters.group)
 async def clean_cmd(client, message):
-    # allow toggles: /clean on, /clean off
-    args = message.text.split()
-    if len(args) > 1 and args[1].lower() in ("on", "off"):
-        # admin check
-        try:
-            member = await client.get_chat_member(message.chat.id, message.from_user.id)
-            if member.status not in ("administrator", "creator"):
-                await message.reply(get_msg("only_admin", message.chat.id), quote=False)
-                return
-        except:
-            await message.reply(get_msg("only_admin", message.chat.id), quote=False)
-            return
-
-        cfg = ensure_chat(message.chat.id)
-        if args[1].lower() == "on":
-            cfg["clean_on"] = True
-            save_data(DATA)
-            await message.reply(f"🧹 Clean feature is now: ✅ ON\nDefault: 30m", quote=False)
-        else:
-            cfg["clean_on"] = False
-            save_data(DATA)
-            await message.reply(f"🧹 Clean feature is now: 🛑 OFF", quote=False)
-        return
-
     # check global enabled
     if not is_clean_enabled_global():
         await message.reply("⚠️ Media clean system is currently disabled. Owner can enable with /cleanon.", quote=False)
         return
 
-    # admin check
+    # check admin
     try:
         member = await client.get_chat_member(message.chat.id, message.from_user.id)
         if member.status not in ("administrator", "creator"):
@@ -390,6 +401,7 @@ async def clean_cmd(client, message):
         await message.reply(get_msg("only_admin", message.chat.id), quote=False)
         return
 
+    args = message.text.split()
     if len(args) > 1:
         tkn = args[1].lower()
         mins = parse_time_token(tkn)
@@ -399,17 +411,35 @@ async def clean_cmd(client, message):
     else:
         mins = 30  # default
 
+    # set per-chat config and save
     cfg = ensure_chat(message.chat.id)
     cfg["clean_on"] = True
     cfg["delete_minutes"] = mins
     save_data(DATA)
 
+    # reply and run batch clean for that time (safe batch)
     human = fmt_timespan(mins)
     start_msg = await message.reply(f"🧹 Cleaning media from last {human} — running in safe batch mode. Please wait...", quote=False)
     deleted = await batch_delete_media_in_range(client, message.chat.id, mins)
     await start_msg.edit_text(get_msg("clean_done", message.chat.id, n=deleted, t=human), quote=False)
 
-# /cleanall - only owner or group creator
+# /cleanoff - admins/owner can turn off for chat
+@bot.on_message(filters.command("cleanoff", prefixes=["/", "!"]) & filters.group)
+async def clean_off_cmd_in_group(client, message):
+    try:
+        member = await client.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in ("administrator", "creator") and message.from_user.id not in OWNER_IDS:
+            await message.reply(get_msg("only_admin", message.chat.id), quote=False)
+            return
+    except:
+        await message.reply(get_msg("only_admin", message.chat.id), quote=False)
+        return
+    cfg = ensure_chat(message.chat.id)
+    cfg["clean_on"] = False
+    save_data(DATA)
+    await message.reply(get_msg("auto_off", message.chat.id), quote=False)
+
+# /cleanall - only owner or chat owner
 @bot.on_message(filters.command("cleanall", prefixes=["/", "!"]) & filters.group)
 async def cleanall_cmd(client, message):
     user_id = message.from_user.id
@@ -429,10 +459,10 @@ async def cleanall_cmd(client, message):
 
     human = fmt_timespan(1440)
     start_msg = await message.reply(get_msg("cleanall_start", message.chat.id, t=human), quote=False)
-    deleted = await batch_delete_media_in_range(client, message.chat.id, 1440, limit=1000)
+    deleted = await batch_delete_media_in_range(client, message.chat.id, 1440)
     await start_msg.edit_text(get_msg("cleanall_done", message.chat.id, n=deleted, t=human), quote=False)
 
-# /warnreset <user_id>
+# /warnreset <user_id> - admin only
 @bot.on_message(filters.command("warnreset", prefixes=["/", "!"]))
 async def warnreset_cmd(client, message):
     try:
@@ -454,42 +484,71 @@ async def warnreset_cmd(client, message):
         await message.reply("Invalid user id.", quote=False)
         return
 
+    # remove from nsfw trackers
     for chat_map in NSFW_TRACKERS.values():
         chat_map.pop(uid, None)
     await message.reply("✅ Warn counters reset for user.", quote=False)
 
 # ---------------------------
-# Batch delete helper
+# Batch delete helper (improved, batch-wise to avoid flood-wait)
 # ---------------------------
-async def batch_delete_media_in_range(client, chat_id: int, minutes: int, limit: int = 2000) -> int:
+async def batch_delete_media_in_range(client, chat_id: int, minutes: int) -> int:
+    """
+    Delete media-only messages in last `minutes` minutes in safe batches.
+    Returns number deleted.
+    """
     deleted = 0
     cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+
     try:
-        # Use pagination: fetch history newest first
-        async for msg in client.get_chat_history(chat_id, limit=limit):
+        # gather message ids in chunks to delete in batches (to reduce API calls)
+        batch_ids: List[int] = []
+        async for msg in client.get_chat_history(chat_id, limit=5000):
             if msg.date < cutoff:
                 break
             if msg.media:
-                try:
-                    await client.delete_messages(chat_id, msg.message_id)
-                    deleted += 1
-                    # small delay to avoid floodwait
-                    await asyncio.sleep(0.25)
-                except RPCError as e:
+                batch_ids.append(msg.message_id)
+                # when batch size reaches 20, attempt to delete in one API call
+                if len(batch_ids) >= 20:
                     try:
-                        err_str = str(e)
-                        if "FLOOD_WAIT" in err_str:
-                            import re
-                            m = re.search(r"FLOOD_WAIT_(\d+)", err_str)
-                            if m:
-                                sec = int(m.group(1))
-                                await asyncio.sleep(min(sec, 30))
-                            else:
-                                await asyncio.sleep(5)
+                        await client.delete_messages(chat_id, batch_ids)
+                        deleted += len(batch_ids)
+                        batch_ids.clear()
+                        await asyncio.sleep(0.6)
+                    except RPCError as e:
+                        # fallback: try deleting one by one for problematic items
+                        for mid in list(batch_ids):
+                            try:
+                                await client.delete_messages(chat_id, mid)
+                                deleted += 1
+                                await asyncio.sleep(0.4)
+                            except RPCError as e2:
+                                err_str = str(e2)
+                                if "FLOOD_WAIT" in err_str:
+                                    import re
+                                    m = re.search(r"FLOOD_WAIT_(\d+)", err_str)
+                                    if m:
+                                        sec = int(m.group(1))
+                                        await asyncio.sleep(min(sec, 30))
+                                    else:
+                                        await asyncio.sleep(5)
+                                else:
+                                    await asyncio.sleep(0.5)
+                        batch_ids.clear()
+                        continue
+        # delete remaining
+        if batch_ids:
+            try:
+                await client.delete_messages(chat_id, batch_ids)
+                deleted += len(batch_ids)
+            except:
+                # best-effort single deletes
+                for mid in batch_ids:
+                    try:
+                        await client.delete_messages(chat_id, mid)
+                        deleted += 1
                     except:
-                        await asyncio.sleep(1)
-                    continue
-        # end
+                        pass
     except Exception as e:
         print("batch_delete_media_in_range error:", e)
     return deleted
@@ -515,133 +574,154 @@ def prune_nsfw_counters(chat_id: str, user_id: str):
 
 @bot.on_message(filters.group & (filters.photo | filters.video | filters.sticker | filters.animation | filters.document))
 async def media_nsfw_handler(client, message):
+    # ignore service messages or anonymous
     if message.from_user is None:
         return
 
     chat_id = message.chat.id
     uid = message.from_user.id
+
+    # if NSFW globally disabled or for this chat -> only auto-clean logic
+    chat_cfg = ensure_chat(chat_id)
+    nsfw_allowed = is_nsfw_enabled_global() and chat_cfg.get("nsfw_on", True)
+    # --- download media to temp ---
     tmpdir = None
+    path = None
     try:
         tmpdir = tempfile.mkdtemp()
         path = await client.download_media(message, file_name=os.path.join(tmpdir, "media"))
         if not path or not os.path.exists(path):
-            if tmpdir:
-                shutil.rmtree(tmpdir, ignore_errors=True)
             return
 
-        res = await call_hf_nsfw(path)
-
         is_nsfw = False
-        try:
-            if res:
-                if isinstance(res, list) and len(res) > 0 and isinstance(res[0], dict):
-                    item = res[0]
-                    label = str(item.get("label", "")).lower()
-                    score = float(item.get("score", 0) or 0)
-                    if "nsfw" in label or score >= NSFW_CONF_THRESHOLD:
-                        is_nsfw = True
-                elif isinstance(res, dict):
-                    if "label" in res and "score" in res:
-                        lab = str(res.get("label", "")).lower()
-                        sc = float(res.get("score", 0) or 0)
-                        if "nsfw" in lab or sc >= NSFW_CONF_THRESHOLD:
+        # only attempt HF if nsfw_allowed True AND HF endpoint configured
+        if nsfw_allowed:
+            res = await call_hf_nsfw(path)
+            # parse result robustly
+            try:
+                if res:
+                    if isinstance(res, list) and len(res) > 0 and isinstance(res[0], dict):
+                        item = res[0]
+                        label = str(item.get("label", "")).lower()
+                        score = float(item.get("score", 0) or 0)
+                        if "nsfw" in label or score >= NSFW_CONF_THRESHOLD:
                             is_nsfw = True
-                    else:
-                        def find_any(d):
-                            if isinstance(d, dict):
-                                if "label" in d and "score" in d:
-                                    return d
-                                for v in d.values():
-                                    r = find_any(v)
-                                    if r:
-                                        return r
-                            elif isinstance(d, list):
-                                for el in d:
-                                    r = find_any(el)
-                                    if r:
-                                        return r
-                            return None
-                        f = find_any(res)
-                        if f:
-                            lab = str(f.get("label", "")).lower()
-                            sc = float(f.get("score", 0) or 0)
+                    elif isinstance(res, dict):
+                        if "label" in res and "score" in res:
+                            lab = str(res.get("label", "")).lower()
+                            sc = float(res.get("score", 0) or 0)
                             if "nsfw" in lab or sc >= NSFW_CONF_THRESHOLD:
                                 is_nsfw = True
-        except Exception as e:
-            print("NSFW parse error:", e, res)
+                        else:
+                            def find_any(d):
+                                if isinstance(d, dict):
+                                    if "label" in d and "score" in d:
+                                        return d
+                                    for v in d.values():
+                                        r = find_any(v)
+                                        if r:
+                                            return r
+                                elif isinstance(d, list):
+                                    for el in d:
+                                        r = find_any(el)
+                                        if r:
+                                            return r
+                                return None
+                            f = find_any(res)
+                            if f:
+                                lab = str(f.get("label", "")).lower()
+                                sc = float(f.get("score", 0) or 0)
+                                if "nsfw" in lab or sc >= NSFW_CONF_THRESHOLD:
+                                    is_nsfw = True
+            except Exception as e:
+                print("NSFW parse error:", e, res)
 
+        # remove local file quickly
         try:
-            os.remove(path)
+            if path and os.path.exists(path):
+                os.remove(path)
         except:
             pass
         if tmpdir:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
-        # If not NSFW -> schedule auto-clean if enabled
-        if not is_nsfw:
-            cfg = ensure_chat(chat_id)
-            if cfg.get("clean_on") and is_clean_enabled_global():
-                mins = cfg.get("delete_minutes", 30)
-                delay = int(mins) * 60
-                if delay == 0:
+        # If NSFW detected -> delete message and warn or mute based on spam
+        if is_nsfw:
+            try:
+                await client.delete_messages(chat_id, message.message_id)
+            except:
+                pass
+
+            # warning (auto-delete after WARNING_TTL)
+            try:
+                warn_msg = await client.send_message(chat_id, get_msg("nsfw_warn", chat_id), reply_to_message_id=None)
+                # schedule delete
+                asyncio.create_task(schedule_warning_delete(client, warn_msg.chat.id, warn_msg.message_id, WARNING_TTL))
+            except Exception:
+                warn_msg = None
+
+            # update trackers
+            arr = prune_nsfw_counters(str(chat_id), str(uid))
+            arr.append(time.time())
+            NSFW_TRACKERS[str(chat_id)][str(uid)] = arr
+
+            # if spam threshold reached -> mute forever
+            if len(arr) >= NSFW_SPAM_COUNT:
+                try:
+                    me = await client.get_me()
+                    bot_member = await client.get_chat_member(chat_id, me.id)
+                    if bot_member.status not in ("administrator", "creator"):
+                        await client.send_message(chat_id, "⚠️ I need admin permissions to mute users automatically. Please grant admin and retry.")
+                        return
+                    perm = types.ChatPermissions(
+                        can_send_messages=False,
+                        can_send_media_messages=False,
+                        can_send_other_messages=False,
+                        can_add_web_page_previews=False,
+                    )
+                    until_ts = int(time.time()) + 10 * 365 * 24 * 3600
+                    await client.restrict_chat_member(chat_id, uid, permissions=perm, until_date=until_ts)
+                    name = message.from_user.first_name or str(uid)
+                    await client.send_message(chat_id, get_msg("nsfw_muted", chat_id, name=name), parse_mode="md")
+                    # notify owners
+                    for o in OWNER_IDS:
+                        try:
+                            await client.send_message(o, f"🚨 User {name} ({uid}) muted in {chat_id} for NSFW spam.")
+                        except:
+                            pass
+                    # reset counter for that user
+                    NSFW_TRACKERS.setdefault(str(chat_id), {}).pop(str(uid), None)
+                except Exception as e:
+                    print("Failed to mute user for NSFW spam:", e)
                     try:
-                        await client.delete_messages(chat_id, message.message_id)
+                        await client.send_message(chat_id, "⚠️ Failed to mute the user automatically. Ensure I have restrict permissions.")
                     except:
                         pass
-                else:
-                    asyncio.create_task(schedule_delete(client, chat_id, message.message_id, delay))
             return
 
-        # NSFW detected: delete and warn (auto-delete warning after WARNING_TTL)
-        try:
-            await client.delete_messages(chat_id, message.message_id)
-        except:
-            pass
-
-        try:
-            warn = await client.send_message(chat_id, get_msg("nsfw_warn", chat_id), reply_to_message_id=None)
-            asyncio.create_task(schedule_warning_delete(client, warn.chat.id, warn.message_id, WARNING_TTL))
-        except Exception:
-            warn = None
-
-        # update counters
-        arr = prune_nsfw_counters(str(chat_id), str(uid))
-        arr.append(time.time())
-        NSFW_TRACKERS[str(chat_id)][str(uid)] = arr
-
-        # if spam threshold reached -> mute permanently
-        if len(arr) >= NSFW_SPAM_COUNT:
-            try:
-                me = await client.get_me()
-                bot_member = await client.get_chat_member(chat_id, me.id)
-                if bot_member.status not in ("administrator", "creator"):
-                    await client.send_message(chat_id, "⚠️ I need admin permissions to mute users automatically. Please grant admin and retry.")
-                    return
-                perm = types.ChatPermissions(
-                    can_send_messages=False,
-                    can_send_media_messages=False,
-                    can_send_other_messages=False,
-                    can_add_web_page_previews=False,
-                )
-                until_ts = int(time.time()) + 10 * 365 * 24 * 3600
-                await client.restrict_chat_member(chat_id, uid, permissions=perm, until_date=until_ts)
-                name = message.from_user.first_name or str(uid)
-                await client.send_message(chat_id, get_msg("nsfw_muted", chat_id, name=name), parse_mode="md")
-                for o in OWNER_IDS:
-                    try:
-                        await client.send_message(o, f"🚨 User {name} ({uid}) muted in {chat_id} for NSFW spam.")
-                    except:
-                        pass
-                NSFW_TRACKERS.setdefault(str(chat_id), {}).pop(str(uid), None)
-            except Exception as e:
-                print("Failed to mute user for NSFW spam:", e)
+        # If not NSFW, then treat by normal auto-clean logic (if chat has clean_on)
+        cfg = ensure_chat(chat_id)
+        if cfg.get("clean_on") and is_clean_enabled_global():
+            mins = cfg.get("delete_minutes", 30)
+            delay = int(mins) * 60
+            if delay == 0:
                 try:
-                    await client.send_message(chat_id, "⚠️ Failed to mute the user automatically. Ensure I have restrict permissions.")
+                    await client.delete_messages(chat_id, message.message_id)
                 except:
                     pass
+            else:
+                # schedule delete (non-blocking)
+                asyncio.create_task(schedule_delete(client, chat_id, message.message_id, delay))
+        return
 
     except Exception as e:
+        # ensure cleanup on error
         print("media_nsfw_handler error:", e)
+        try:
+            if path and os.path.exists(path):
+                os.remove(path)
+        except:
+            pass
         try:
             if tmpdir:
                 shutil.rmtree(tmpdir, ignore_errors=True)
@@ -665,7 +745,7 @@ async def background_keepalive():
                 try:
                     async with aiohttp.ClientSession() as s:
                         await s.get(RENDER_HEALTH_URL, timeout=10)
-                except:
+                except Exception:
                     pass
             await asyncio.sleep(280)
         except Exception:
@@ -688,16 +768,18 @@ async def watchdog_task(client):
         await asyncio.sleep(60)
 
 # ---------------------------
-# Synchronous 5-second keep-alive (to prevent Render free-sleep)
+# Synchronous 5s keep-alive (Render free-sleep mitigation)
 # ---------------------------
 def keep_alive_sync():
     url = RENDER_HEALTH_URL or RENDER_EXTERNAL_URL or None
     if not url:
         print("⚠️ No render keepalive URL provided in env (RENDER_HEALTH_URL or RENDER_EXTERNAL_URL). Skipping 5s pings.")
         return
+    # re-create session each loop to avoid long-lived unclosed connections; short timeout used
     while True:
         try:
-            requests.get(url, timeout=10)
+            with requests.Session() as sess:
+                sess.get(url, timeout=8)
         except Exception as e:
             print("⚠️ Render keepalive ping failed:", e)
         time.sleep(5)
@@ -705,9 +787,8 @@ def keep_alive_sync():
 # ---------------------------
 # MAIN
 # ---------------------------
-START_TS = time.time()
-
 async def main():
+    # start flask (keep-alive) in daemon thread
     threading.Thread(target=run_flask, daemon=True).start()
     print("🩵 ShieldX starting...")
 
@@ -719,20 +800,23 @@ async def main():
         print("❌ Failed to start Pyrogram client:", e)
         return
 
+    # background tasks
     asyncio.create_task(background_keepalive())
     asyncio.create_task(watchdog_task(bot))
     print("🩵 Background keepalive + watchdog running.")
 
+    # keep running
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
-    # try apply nest_asyncio (safe)
+    # apply nest_asyncio early so local runs (not required on render, but safe)
     try:
         import nest_asyncio
         nest_asyncio.apply()
     except Exception:
         print("⚠️ nest_asyncio not available or failed to apply — continuing.")
 
+    # start synchronous fast pinger thread for free render plans
     try:
         threading.Thread(target=keep_alive_sync, daemon=True).start()
     except Exception as e:
