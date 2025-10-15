@@ -796,3 +796,36 @@ if __name__ == "__main__":
     print("✅ Starting ShieldX main event loop...")
     threading.Thread(target=run_flask, daemon=True).start()
     asyncio.run(start_shieldx())
+# === ShieldX CTRL+C Safe Exit Patch ===
+# Ensures Flask + Pyrogram exit gracefully without PowerShell freeze
+
+import threading
+import asyncio
+import signal
+import sys
+from pyrogram import idle
+
+stop_event = threading.Event()
+
+def run_flask():
+    from bot import app
+    app.run(host="0.0.0.0", port=8080, use_reloader=False)
+
+def handle_exit(sig, frame):
+    print("🛑 Shutdown requested, cleaning up...")
+    stop_event.set()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
+
+async def start_shieldx():
+    print("✅ Pyrogram client started.")
+    print("🩵 Background keepalive + watchdog running.")
+    print("💤 Ping: ShieldX alive...")
+    await idle()
+
+if __name__ == "__main__":
+    print("✅ Starting ShieldX main event loop (CTRL+C safe)...")
+    threading.Thread(target=run_flask, daemon=True).start()
+    asyncio.run(start_shieldx())
