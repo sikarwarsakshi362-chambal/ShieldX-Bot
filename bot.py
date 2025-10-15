@@ -766,6 +766,20 @@ if __name__ == "__main__":
 import asyncio
 from pyrogram import idle
 
+# === ShieldX Command Handlers Restore (v4 stable) ===
+from pyrogram import filters
+
+@bot.on_message(filters.command("ping"))
+async def ping_cmd(client, message):
+    await message.reply_text("🏓 Pong! ShieldX alive and responding ✅")
+
+@bot.on_message(filters.command("start"))
+async def start_cmd(client, message):
+    await message.reply_text("🩵 ShieldX Bot online — ready to protect your chats!")
+
+@bot.on_message(filters.command("help"))
+async def help_cmd(client, message):
+    await message.reply_text("🧩 Commands:\n/start — Activate\n/ping — Check status\n/help — Show this message")
 async def start_shieldx():
     print("✅ Pyrogram client started.")
     print("🩵 Background keepalive + watchdog running.")
@@ -786,6 +800,20 @@ def run_flask():
     from bot import app
     app.run(host="0.0.0.0", port=8080)
 
+# === ShieldX Command Handlers Restore (v4 stable) ===
+from pyrogram import filters
+
+@bot.on_message(filters.command("ping"))
+async def ping_cmd(client, message):
+    await message.reply_text("🏓 Pong! ShieldX alive and responding ✅")
+
+@bot.on_message(filters.command("start"))
+async def start_cmd(client, message):
+    await message.reply_text("🩵 ShieldX Bot online — ready to protect your chats!")
+
+@bot.on_message(filters.command("help"))
+async def help_cmd(client, message):
+    await message.reply_text("🧩 Commands:\n/start — Activate\n/ping — Check status\n/help — Show this message")
 async def start_shieldx():
     print("✅ Pyrogram client started.")
     print("🩵 Background keepalive + watchdog running.")
@@ -819,6 +847,20 @@ def handle_exit(sig, frame):
 signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 
+# === ShieldX Command Handlers Restore (v4 stable) ===
+from pyrogram import filters
+
+@bot.on_message(filters.command("ping"))
+async def ping_cmd(client, message):
+    await message.reply_text("🏓 Pong! ShieldX alive and responding ✅")
+
+@bot.on_message(filters.command("start"))
+async def start_cmd(client, message):
+    await message.reply_text("🩵 ShieldX Bot online — ready to protect your chats!")
+
+@bot.on_message(filters.command("help"))
+async def help_cmd(client, message):
+    await message.reply_text("🧩 Commands:\n/start — Activate\n/ping — Check status\n/help — Show this message")
 async def start_shieldx():
     print("✅ Pyrogram client started.")
     print("🩵 Background keepalive + watchdog running.")
@@ -838,3 +880,4 @@ def handle_exit(sig, frame):
 
 signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
+
