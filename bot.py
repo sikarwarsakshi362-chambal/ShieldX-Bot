@@ -752,3 +752,11 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Shutdown requested, exiting...")
+# === Start Pyrogram Client ===
+if __name__ == "__main__":
+    try:
+        print("✅ Starting ShieldX main event loop...")
+        app.run()  # Pyrogram client start
+        idle()     # keep running, handle commands
+    except Exception as e:
+        print(f"⚠️ Startup error: {e}")
