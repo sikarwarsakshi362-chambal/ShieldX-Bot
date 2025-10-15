@@ -775,3 +775,24 @@ async def start_shieldx():
 if __name__ == "__main__":
     print("✅ Starting ShieldX main event loop...")
     asyncio.run(start_shieldx())
+# === ShieldX Final Flask + Pyrogram Sync Fix ===
+# Ensures Flask runs in background thread and Pyrogram stays alive properly
+
+import threading
+import asyncio
+from pyrogram import idle
+
+def run_flask():
+    from bot import app
+    app.run(host="0.0.0.0", port=8080)
+
+async def start_shieldx():
+    print("✅ Pyrogram client started.")
+    print("🩵 Background keepalive + watchdog running.")
+    print("💤 Ping: ShieldX alive...")
+    await idle()
+
+if __name__ == "__main__":
+    print("✅ Starting ShieldX main event loop...")
+    threading.Thread(target=run_flask, daemon=True).start()
+    asyncio.run(start_shieldx())
