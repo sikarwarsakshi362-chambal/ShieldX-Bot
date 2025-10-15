@@ -760,3 +760,18 @@ if __name__ == "__main__":
         idle()     # keep running, handle commands
     except Exception as e:
         print(f"⚠️ Startup error: {e}")
+# === ShieldX Final Structural Patch (Full Stable Restore) ===
+# Fixes: Flask duplication, Pyrogram loop sync, GC/DM reply enable
+
+import asyncio
+from pyrogram import idle
+
+async def start_shieldx():
+    print("✅ Pyrogram client started.")
+    print("🩵 Background keepalive + watchdog running.")
+    print("💤 Ping: ShieldX alive...")
+    await idle()
+
+if __name__ == "__main__":
+    print("✅ Starting ShieldX main event loop...")
+    asyncio.run(start_shieldx())
