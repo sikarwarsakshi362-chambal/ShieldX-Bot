@@ -10,6 +10,7 @@ import time
 import tempfile
 import shutil
 import json
+import socket
 from datetime import datetime, timedelta
 from typing import Dict, List
 
@@ -88,9 +89,27 @@ def home():
 def healthz():
     return "ok"
 
-def run_flask():
-    # Use the default flask development server — for production replace with a WSGI server
-    app.run(host="0.0.0.0", port=PORT)
+def find_free_port(preferred_port: int, search_range: int = 100) -> int:
+    start = max(1, min(preferred_port, 65535))
+    end = min(65535, start + search_range)
+    for p in range(start, end + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind(("0.0.0.0", p))
+                return p
+            except OSError:
+                continue
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("0.0.0.0", 0))
+        return s.getsockname()[1]
+
+def run_flask(port: int):
+    try:
+        # Use the default flask development server — for production replace with a WSGI server
+        app.run(host="0.0.0.0", port=port)
+    except OSError as e:
+        print(f"⚠️ Flask failed to start on port {port}:", e)
 
 # ========== Pyrogram client ==========
 bot = Client("ShieldX", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -278,13 +297,13 @@ async def cb_help(client: Client, query):
         help_text = (
             "💡 *ShieldX Commands & Usage Guide*\n\n"
             "🧹 /clean on — enable auto media cleanup (default 30m)\n"
-            "🧼 /clean_custom <20m|1h|2h> — set custom cleanup interval\n"
+            "🧼 /delay <20m|1h|2h> — set custom cleanup interval\n"
             "🛑 /clean off — disable auto-clean\n"
             "⚡ /clean now — delete recent media immediately (admin only)\n"
             "🧹 /cleanall — delete media from last 24h (admin only)\n"
             "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute\n"
             "🧭 /status — current protection status (group-only)\n"
-            "🌐 /lang <code> — change language for this chat (DM only)\n"
+            "🌐 /lang — open language selector (DM only)\n"
             "\nPro tip: Add ShieldX as admin in your group for full permissions."
         )
         try:
@@ -305,13 +324,13 @@ async def cmd_help(client: Client, message):
             help_text = (
                 "💡 *ShieldX Commands & Usage Guide*\n\n"
                 "🧹 /clean on — enable auto media cleanup (default 30m)\n"
-                "🧼 /clean_custom <20m|1h|2h> — set custom cleanup interval\n"
+                "🧼 /delay <20m|1h|2h> — set custom cleanup interval\n"
                 "🛑 /clean off — disable auto-clean\n"
                 "⚡ /clean now — delete recent media immediately (admin only)\n"
                 "🧹 /cleanall — delete media from last 24h (admin only)\n"
                 "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute\n"
                 "🧭 /status — current protection status (group-only)\n"
-                "🌐 /lang <code> — change language for this chat (DM only)\n\n"
+                "🌐 /lang — open language selector (DM only)\n\n"
                 "Pro tip: Add ShieldX as admin in your group for full permissions.\n"
                 "Support: " + SUPPORT_LINK
             )
@@ -398,8 +417,8 @@ async def cmd_clean_on(client: Client, message):
     except Exception as e:
         print("cmd_clean_on error:", e)
 
-@bot.on_message(filters.command("clean_custom") & filters.group)
-async def cmd_clean_custom(client: Client, message):
+@bot.on_message(filters.command("delay") & filters.group)
+async def cmd_delay(client: Client, message):
     try:
         user_id = message.from_user.id if message.from_user else None
         if not user_id:
@@ -412,7 +431,7 @@ async def cmd_clean_custom(client: Client, message):
             return
         parts = message.text.split(maxsplit=1)
         if len(parts) < 2:
-            await message.reply_text("Usage: /clean_custom <time> (e.g., 20m, 1h)", quote=True)
+            await message.reply_text("Usage: /delay <time> (e.g., 20m, 1h).", quote=True)
             return
         token = parts[1].strip().lower()
         minutes = None
@@ -426,7 +445,7 @@ async def cmd_clean_custom(client: Client, message):
         except:
             minutes = None
         if minutes is None or minutes < 1 or minutes > 1440:
-            await message.reply_text("⚠️ /clean_custom supports 1m to 24h only (e.g., 20m, 1h).", quote=True)
+            await message.reply_text("⚠️ /delay supports 1m to 24h only (e.g., 20m, 1h).", quote=True)
             return
         cfg = ensure_chat(message.chat.id)
         cfg["clean_on"] = True
@@ -435,7 +454,7 @@ async def cmd_clean_custom(client: Client, message):
         start_clean_task_if_needed(client, message.chat.id)
         await message.reply_text(f"✅ Auto-clean enabled — media will be removed every {fmt_interval(minutes)}.", quote=True)
     except Exception as e:
-        print("cmd_clean_custom error:", e)
+        print("cmd_delay error:", e)
 
 @bot.on_message(filters.command(["clean_off", "cleanoff"]) & filters.group)
 async def cmd_clean_off(client: Client, message):
@@ -678,19 +697,57 @@ async def on_added_to_group(client: Client, message):
                 break
 
 # ========== /lang (DM only) ==========
+# Hybrid UI selector for 30 languages (select via inline buttons)
+LANG_OPTIONS = [
+    ("English", "en"), ("हिंदी", "hi"), ("Español", "es"), ("Français", "fr"), ("Deutsch", "de"),
+    ("Русский", "ru"), ("العربية", "ar"), ("Português", "pt"), ("اردو", "ur"), ("বাংলা", "bn"),
+    ("ਪੰਜਾਬੀ", "pa"), ("मराठी", "mr"), ("தமிழ்", "ta"), ("తెలుగు", "te"), ("ಕನ್ನಡ", "kn"),
+    ("മലയാളം", "ml"), ("ગુજરાતી", "gu"), ("ଓଡ଼ିଆ", "or"), ("नेपाली", "ne"), ("සිංහල", "si"),
+    ("မြန်မာ", "my"), ("Tiếng Việt", "vi"), ("Bahasa Indonesia", "id"), ("ไทย", "th"), ("Türkçe", "tr"),
+    ("فارسی", "fa"), ("Nederlands", "nl"), ("Svenska", "sv"), ("Norsk", "no"), ("Dansk", "da")
+]
+
+def build_lang_keyboard():
+    # build a keyboard with 5 columns per row
+    buttons = []
+    row = []
+    cols = 5
+    for name, code in LANG_OPTIONS:
+        row.append(InlineKeyboardButton(name, callback_data=f"sx_lang_{code}"))
+        if len(row) >= cols:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    return InlineKeyboardMarkup(buttons)
+
 @bot.on_message(filters.command("lang") & filters.private)
 async def cmd_lang(client: Client, message):
     try:
-        parts = message.text.split(maxsplit=1)
-        if len(parts) < 2:
-            await message.reply_text("Usage: /lang <code> (example: en, hi).", quote=True)
-            return
-        code = parts[1].strip().lower()
-        # For this simplified build we keep language persistence minimal; store per-user pref
+        # open selector (no manual code entry)
+        kb = build_lang_keyboard()
+        await message.reply_text("🌐 Select your language (tap a button):", reply_markup=kb, quote=True)
+    except Exception:
+        pass
+
+@bot.on_callback_query(filters.regex(r"^sx_lang_"))
+async def cb_lang_select(client: Client, query):
+    try:
+        await query.answer()
+        data = query.data or ""
+        code = data.replace("sx_lang_", "").strip().lower()
+        # find display name
+        name = next((n for n, c in LANG_OPTIONS if c == code), code)
         udata = DATA.setdefault("users", {})
-        udata[str(message.from_user.id)] = {"lang": code}
+        udata[str(query.from_user.id)] = {"lang": code}
         save_data(DATA)
-        await message.reply_text(f"🌐 Language preference saved: {code}", quote=True)
+        try:
+            await query.message.edit_text(f"🌐 Language set: {name} ({code})")
+        except:
+            try:
+                await client.send_message(query.from_user.id, f"🌐 Language set: {name} ({code})")
+            except:
+                pass
     except Exception:
         pass
 
@@ -712,12 +769,18 @@ async def watchdog_task(bot_client: Client):
 # ========== Startup ==========
 async def main():
     log_module_status()
-    try:
-        await bot.start()
-        print("✅ Pyrogram client started.")
-    except Exception as e:
-        print("❌ Failed to start Pyrogram client:", e)
-        return
+    # Try to start pyrogram client with auto-retry
+    backoff = 1
+    while True:
+        try:
+            await bot.start()
+            print("✅ Pyrogram client started.")
+            break
+        except Exception as e:
+            print("❌ Failed to start Pyrogram client:", e)
+            print(f"⏳ Retrying in {backoff} seconds...")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 60)
 
     # start keepalive/watchdog/background
     asyncio.create_task(background_keepalive())
@@ -742,9 +805,20 @@ async def main():
 # (This replaces duplicate startup blocks and prevents double-start / freezes)
 # -------------------------
 if __name__ == "__main__":
+    # choose a free port (try env PORT first, then search forward)
+    try:
+        chosen_port = find_free_port(PORT, search_range=100)
+        if chosen_port != PORT:
+            print(f"⚠️ Preferred port {PORT} busy — using fallback port {chosen_port}.")
+        else:
+            print(f"Using preferred port {PORT} for Flask keepalive.")
+        PORT = chosen_port
+    except Exception as e:
+        print("Port selection error:", e)
+
     # start flask thread (daemon so it won't block shutdown)
     try:
-        threading.Thread(target=run_flask, daemon=True).start()
+        threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
         # keepalive thread uses blocking time.sleep loop to avoid freezing input on ctrl+c
         threading.Thread(target=lambda: asyncio.run(background_keepalive()), daemon=True).start()
     except Exception as e:
@@ -755,11 +829,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Shutdown requested, exiting...")
-
-
-
-
-
-
-
-
