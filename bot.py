@@ -829,3 +829,12 @@ if __name__ == "__main__":
     print("✅ Starting ShieldX main event loop (CTRL+C safe)...")
     threading.Thread(target=run_flask, daemon=True).start()
     asyncio.run(start_shieldx())
+import sys
+import signal
+
+def handle_exit(sig, frame):
+    print("🛑 Safe shutdown — releasing resources...")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
