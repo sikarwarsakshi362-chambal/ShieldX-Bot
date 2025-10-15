@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ShieldX v4 — Final (fixed clean system, NSFW 5-in-3s mute, improved start/help UI)
 # Requirements: pyrogram, flask, python-dotenv, opencv-python (optional), numpy (optional), pillow (optional)
 # Keep your .env with API_ID, API_HASH, BOT_TOKEN, OWNER_ID, PORT, SUPPORT_URL (optional)
@@ -89,6 +89,7 @@ def healthz():
     return "ok"
 
 def run_flask():
+    # Use the default flask development server — for production replace with a WSGI server
     app.run(host="0.0.0.0", port=PORT)
 
 # ========== Pyrogram client ==========
@@ -102,7 +103,6 @@ def log_module_status():
     print(f"🧠 NSFW modules check → cv2: {cv2_ok}, PIL: {pil_ok}, numpy: {np_ok}")
     if cv2 is None or Image is None or np is None:
         print("⚠️ NSFW detection will run in fallback (heuristic may be limited).")
-
 # ========== NSFW detection (local heuristic fallback) ==========
 # Returns True if image likely NSFW by simple skin-tone heuristic (best-effort).
 def is_nsfw_local(image_path: str, skin_ratio_threshold: float = 0.30) -> bool:
@@ -237,7 +237,6 @@ def fmt_interval(mins: int) -> str:
         hours = mins // 60
         return f"{hours}h"
     return f"{mins}m"
-
 # ========== Commands & Handlers ==========
 @bot.on_message(filters.command("start") & (filters.private | filters.group))
 async def cmd_start(client: Client, message):
@@ -375,7 +374,6 @@ async def cmd_status(client: Client, message):
         await message.reply_text(status_msg, quote=False)
     except Exception:
         pass
-
 # ---------- CLEAN commands (group-only) ----------
 @bot.on_message(filters.command(["clean", "clean_on"], prefixes=["/", "!", "."]) & filters.group)
 async def cmd_clean_on(client: Client, message):
@@ -678,8 +676,6 @@ async def on_added_to_group(client: Client, message):
                 except:
                     pass
                 break
-    except Exception:
-        pass
 
 # ========== /lang (DM only) ==========
 @bot.on_message(filters.command("lang") & filters.private)
@@ -702,7 +698,7 @@ async def cmd_lang(client: Client, message):
 async def background_keepalive():
     while True:
         print("💤 Ping: ShieldX alive...")
-        await asyncio.sleep(300)
+        await asyncio.sleep(5)  # user wanted fast ping (5s) for visibility
 
 async def watchdog_task(bot_client: Client):
     while True:
@@ -741,14 +737,29 @@ async def main():
     print("🩵 Background keepalive + watchdog running.")
     await asyncio.Event().wait()
 
+# -------------------------
+# SINGLE CLEAN STARTUP BLOCK
+# (This replaces duplicate startup blocks and prevents double-start / freezes)
+# -------------------------
 if __name__ == "__main__":
-    # start flask thread
+    # start flask thread (daemon so it won't block shutdown)
     try:
         threading.Thread(target=run_flask, daemon=True).start()
+        # keepalive thread uses blocking time.sleep loop to avoid freezing input on ctrl+c
+        threading.Thread(target=lambda: asyncio.run(background_keepalive()), daemon=True).start()
     except Exception as e:
         print("⚠️ Failed to start keepalive Flask thread:", e)
 
+    # run main pyrogram startup loop (CTRL+C will stop asyncio.run cleanly)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Shutdown requested, exiting...")
+
+
+
+
+
+
+
+
