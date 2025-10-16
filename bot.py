@@ -913,22 +913,12 @@ if __name__ == "__main__":
     except Exception as e:
         print("Port selection error:", e)
 
-    # ✅ Run Flask in background thread (non-blocking)
+    # ✅ Run Flask in background thread
     threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
 
     # ✅ Start async bot logic
-    asyncio.run(main())
-
-    try:
-        threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
-        threading.Thread(
-            target=lambda: asyncio.run(background_keepalive()),
-            daemon=True
-        ).start()
-    except Exception as e:
-        print("⚠️ Failed to start keepalive Flask thread:", e)
-
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Shutdown requested, exiting...")
+
