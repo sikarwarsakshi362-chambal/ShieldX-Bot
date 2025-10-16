@@ -450,7 +450,7 @@ async def cmd_status(client: Client, message: Message):
         await message.reply_text(status_msg, quote=False)
     except Exception:
         pass
-        @bot.on_message(filters.command("test"))
+@bot.on_message(filters.command("test"))
 async def test_cmd(client, message):
     print("✅ TEST COMMAND RECEIVED")
     await message.reply("✅ Bot working")
