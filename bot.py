@@ -349,7 +349,6 @@ async def cmd_help(client: Client, message: Message):
     except Exception:
         pass
 
-
 @bot.on_callback_query(filters.regex(r"^sx_start$"))
 async def cb_start(client: Client, query):
     try:
@@ -371,33 +370,6 @@ async def cb_start(client: Client, query):
     except Exception:
         pass
 
-@bot.on_callback_query(filters.regex(r"^sx_start$"))
-async def cb_start(client: Client, query):
-    try:
-        await query.answer()
-        # Send a fresh start DM to the user (avoid relying on get_messages())
-        try:
-            me = await client.get_me()
-            text = (
-                "🛡️ *ShieldX Multi-Protection* — Active & Watching
-
-"
-                f"Hey {query.from_user.mention if query.from_user else ''} 👋
-"
-                "I'm *ShieldX*, your Telegram Guardian bot — I keep groups safe from spam, unwanted media, and NSFW content 24×7.
-
-"
-                "Use /help to see available commands."
-            )
-            buttons = [
-                [InlineKeyboardButton("🧠 Commands", callback_data="sx_help")],
-                [InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{ADD_TO_GROUP_USERNAME}?startgroup=true")]
-            ]
-            await client.send_message(query.from_user.id, text, reply_markup=InlineKeyboardMarkup(buttons))
-        except Exception:
-            pass
-    except Exception:
-        pass
 
 @bot.on_message(filters.command("ping") & (filters.private | filters.group))
 async def cmd_ping(client: Client, message: Message):
@@ -405,13 +377,13 @@ async def cmd_ping(client: Client, message: Message):
         t0 = time.time()
         m = await message.reply_text("🏓 Pinging...")
         ms = int((time.time() - t0) * 1000)
-        await m.edit_text(f"🩵 ShieldX Online!
-⚡ {ms}ms | Uptime: {int(time.time())}")
+        await m.edit_text(f"🩵 ShieldX Online!\n⚡ {ms}ms | Uptime: {int(time.time())}")
     except Exception:
         try:
             await message.reply_text("🩵 ShieldX Online!")
         except:
             pass
+
 
 # ---------- STATUS (group-only) ----------
 @bot.on_message(filters.command("status") & filters.group)
@@ -423,17 +395,15 @@ async def cmd_status(client: Client, message: Message):
         nsfw = "Active" if cfg.get("nsfw_on", True) else "Off"
         # Watchdog always running on this process if started
         status_msg = (
-            f"🧭 ShieldX Status:
-"
-            f"🧹 Auto-clean: {on} (every {fmt_interval(interval)})
-"
-            f"🔞 NSFW filter: {nsfw}
-"
+            f"🧭 ShieldX Status:\n"
+            f"🧹 Auto-clean: {on} (every {fmt_interval(interval)})\n"
+            f"🔞 NSFW filter: {nsfw}\n"
             f"💤 Watchdog: Running"
         )
         await message.reply_text(status_msg, quote=False)
     except Exception:
         pass
+
 
 # ============================================================
 # 🧹 CLEAN SYSTEM — GLOBAL AUTO MEDIA CLEANER (ShieldX v4)
