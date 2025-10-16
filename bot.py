@@ -836,17 +836,21 @@ async def background_keepalive():
             print("Keepalive error:", e)
         await asyncio.sleep(5)  # 5-second local ping
 
+
 async def watchdog_task(bot_client: Client):
+    """Telegram watchdog — confirms bot is still alive every 30 mins."""
     while True:
         try:
             if OWNER_ID:
+                await bot_client.get_me()  # confirm session still valid
                 await bot_client.send_message(
                     OWNER_ID,
                     "🩵 ShieldX watchdog ping OK.",
                     disable_notification=True
                 )
-        except Exception:
-            pass
+                print("🐍 Watchdog: ping sent to owner.")
+        except Exception as e:
+            print("Watchdog error:", e)
         await asyncio.sleep(1800)  # 30-minute watchdog ping
 
 
