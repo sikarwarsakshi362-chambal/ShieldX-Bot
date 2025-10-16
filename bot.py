@@ -870,6 +870,21 @@ async def main():
 # SINGLE CLEAN STARTUP BLOCK
 # (This replaces duplicate startup blocks and prevents double-start / freezes)
 # -------------------------
+# SINGLE CLEAN STARTUP BLOCK
+# (This replaces duplicate startup blocks and prevents double-start / freezes)
+# -------------------------
+def find_free_port(start_port, search_range=50):
+    import socket
+    for port in range(start_port, start_port + search_range):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+    return start_port
+def run_flask(port=None):
+    app.run(host="0.0.0.0", port=port or PORT)
 def run_flask(port=None):
     app.run(host="0.0.0.0", port=port or PORT)
 
