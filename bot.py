@@ -285,13 +285,11 @@ async def cb_help(client: Client, query):
 "
             "🧹 /clean on — enable auto media cleanup (default 30m)
 "
-            "🧼 /clean_custom <20m|1h|2h> — set custom cleanup interval
+            "🧼 /delay <20m|1h|2h> — set custom cleanup interval
 "
             "🛑 /clean off — disable auto-clean
 "
-            "⚡ /clean now — delete recent media immediately (admin only)
-"
-            "🧹 /cleanall — delete media from last 24h (admin only)
+         "🧹 /cleanall — delete media from last 24h (admin only)
 "
             "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute
 "
@@ -323,11 +321,9 @@ async def cmd_help(client: Client, message: Message):
 "
                 "🧹 /clean on — enable auto media cleanup (default 30m)
 "
-                "🧼 /clean_custom <20m|1h|2h> — set custom cleanup interval
+                "🧼 /delay <20m|1h|2h> — set custom cleanup interval
 "
                 "🛑 /clean off — disable auto-clean
-"
-                "⚡ /clean now — delete recent media immediately (admin only)
 "
                 "🧹 /cleanall — delete media from last 24h (admin only)
 "
