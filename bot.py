@@ -870,28 +870,29 @@ async def main():
 # SINGLE CLEAN STARTUP BLOCK
 # (This replaces duplicate startup blocks and prevents double-start / freezes)
 # -------------------------
+def run_flask(port=None):
+    app.run(host="0.0.0.0", port=port or PORT)
+
 if __name__ == "__main__":
     # choose a free port (try env PORT first, then search forward)
     try:
-        chosen_port=find_free_port(PORT, search_range=100)
+        chosen_port = find_free_port(PORT, search_range=100)
         if chosen_port != PORT:
-            print(
-                f"⚠️ Preferred port {PORT} busy — using fallback port {chosen_port}.")
+            print(f"⚠️ Preferred port {PORT} busy — using fallback port {chosen_port}.")
         else:
             print(f"Using preferred port {PORT} for Flask keepalive.")
-        PORT=chosen_port
+        PORT = chosen_port
     except Exception as e:
         print("Port selection error:", e)
 
     # start flask thread (daemon so it won't block shutdown)
     try:
         threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
-        # keepalive thread uses blocking time.sleep loop to avoid freezing
-        # input on ctrl+c
+        # keepalive thread uses blocking time.sleep loop to avoid freezing input on ctrl+c
         threading.Thread(
-    target=lambda: asyncio.run(
-        background_keepalive()),
-         daemon=True).start()
+            target=lambda: asyncio.run(background_keepalive()),
+            daemon=True
+        ).start()
     except Exception as e:
         print("⚠️ Failed to start keepalive Flask thread:", e)
 
@@ -899,4 +900,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-      print("Shutdown requested, exiting...")
+        print("Shutdown requested, exiting...")
