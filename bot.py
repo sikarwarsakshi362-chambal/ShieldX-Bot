@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ShieldX v4 — Final (fixed clean system, NSFW 5-in-3s mute, improved start/help UI)
 # Requirements: pyrogram, flask, python-dotenv, opencv-python (optional), numpy (optional), pillow (optional)
 # Keep your .env with API_ID, API_HASH, BOT_TOKEN, OWNER_ID, PORT, SUPPORT_URL (optional)
@@ -16,7 +16,7 @@ from typing import Dict, List
 from flask import Flask
 from pyrogram import Client, filters, types
 from pyrogram.errors import RPCError, ChatWriteForbidden
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from dotenv import load_dotenv
 
 # Optional image libs for local NSFW heuristic
@@ -73,6 +73,7 @@ def ensure_chat(chat_id: int):
             "clean_on": False,
             "clean_interval_minutes": 30,
             "nsfw_on": True,
+            "action_delay_seconds": 0,
         }
         save_data(DATA)
     return DATA[cid]
@@ -209,15 +210,6 @@ def stop_clean_task(chat_id: int):
         del clean_tasks[chat_id]
 
 # ========== Utility helpers ==========
-def is_user_admin(client: Client, chat_id: int, user_id: int) -> bool:
-    try:
-        member = client.get_chat_member(chat_id, user_id)
-        # If calling synchronously inside an async handler, ensure await where needed.
-    except Exception:
-        # fallback
-        pass
-    return True  # this helper acts as placeholder — use async variant below
-
 async def is_admin_or_owner(client: Client, chat_id: int, user_id: int) -> bool:
     try:
         if user_id == OWNER_ID:
@@ -240,19 +232,30 @@ def fmt_interval(mins: int) -> str:
 
 # ========== Commands & Handlers ==========
 @bot.on_message(filters.command("start") & (filters.private | filters.group))
-async def cmd_start(client: Client, message):
+async def cmd_start(client: Client, message: Message):
     try:
         if message.chat.type == "private":
             me = await client.get_me()
             text = (
-                "🛡️ *ShieldX Multi-Protection* — Active & Watching\n\n"
-                f"Hey {message.from_user.mention if message.from_user else ''} 👋\n"
-                "I'm *ShieldX*, your Telegram Guardian bot — I keep groups safe from spam, unwanted media, and NSFW content 24×7.\n\n"
-                "What I provide:\n"
-                "• Auto-clean media (custom interval)\n"
-                "• Instant NSFW detection & delete\n"
-                "• Smart spam-mute for repeat NSFW\n"
-                "• Keepalive & watchdog for continuous uptime\n\n"
+                "🛡️ *ShieldX Multi-Protection* — Active & Watching
+
+"
+                f"Hey {message.from_user.mention if message.from_user else ''} 👋
+"
+                "I'm *ShieldX*, your Telegram Guardian bot — I keep groups safe from spam, unwanted media, and NSFW content 24×7.
+
+"
+                "What I provide:
+"
+                "• Auto-clean media (custom interval)
+"
+                "• Instant NSFW detection & delete
+"
+                "• Smart spam-mute for repeat NSFW
+"
+                "• Keepalive & watchdog for continuous uptime
+
+"
                 "Use the buttons below to get started. /help shows full command list."
             )
             buttons = [
@@ -277,16 +280,27 @@ async def cb_help(client: Client, query):
         await query.answer()
         # Deliver same as /help DM
         help_text = (
-            "💡 *ShieldX Commands & Usage Guide*\n\n"
-            "🧹 /clean on — enable auto media cleanup (default 30m)\n"
-            "🧼 /clean_custom <20m|1h|2h> — set custom cleanup interval\n"
-            "🛑 /clean off — disable auto-clean\n"
-            "⚡ /clean now — delete recent media immediately (admin only)\n"
-            "🧹 /cleanall — delete media from last 24h (admin only)\n"
-            "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute\n"
-            "🧭 /status — current protection status (group-only)\n"
-            "🌐 /lang <code> — change language for this chat (DM only)\n"
-            "\nPro tip: Add ShieldX as admin in your group for full permissions."
+            "💡 *ShieldX Commands & Usage Guide*
+
+"
+            "🧹 /clean on — enable auto media cleanup (default 30m)
+"
+            "🧼 /clean_custom <20m|1h|2h> — set custom cleanup interval
+"
+            "🛑 /clean off — disable auto-clean
+"
+            "⚡ /clean now — delete recent media immediately (admin only)
+"
+            "🧹 /cleanall — delete media from last 24h (admin only)
+"
+            "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute
+"
+            "🧭 /status — current protection status (group-only)
+"
+            "🌐 /lang <code> — change language for this chat (DM only)
+"
+            "
+Pro tip: Add ShieldX as admin in your group for full permissions."
         )
         try:
             await query.message.edit_text(help_text)
@@ -300,20 +314,32 @@ async def cb_help(client: Client, query):
         pass
 
 @bot.on_message(filters.command("help") & (filters.private | filters.group))
-async def cmd_help(client: Client, message):
+async def cmd_help(client: Client, message: Message):
     try:
         if message.chat.type == "private":
             help_text = (
-                "💡 *ShieldX Commands & Usage Guide*\n\n"
-                "🧹 /clean on — enable auto media cleanup (default 30m)\n"
-                "🧼 /clean_custom <20m|1h|2h> — set custom cleanup interval\n"
-                "🛑 /clean off — disable auto-clean\n"
-                "⚡ /clean now — delete recent media immediately (admin only)\n"
-                "🧹 /cleanall — delete media from last 24h (admin only)\n"
-                "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute\n"
-                "🧭 /status — current protection status (group-only)\n"
-                "🌐 /lang <code> — change language for this chat (DM only)\n\n"
-                "Pro tip: Add ShieldX as admin in your group for full permissions.\n"
+                "💡 *ShieldX Commands & Usage Guide*
+
+"
+                "🧹 /clean on — enable auto media cleanup (default 30m)
+"
+                "🧼 /clean_custom <20m|1h|2h> — set custom cleanup interval
+"
+                "🛑 /clean off — disable auto-clean
+"
+                "⚡ /clean now — delete recent media immediately (admin only)
+"
+                "🧹 /cleanall — delete media from last 24h (admin only)
+"
+                "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute
+"
+                "🧭 /status — current protection status (group-only)
+"
+                "🌐 /lang <code> — change language for this chat (DM only)
+
+"
+                "Pro tip: Add ShieldX as admin in your group for full permissions.
+"
                 "Support: " + SUPPORT_LINK
             )
             # attach quick buttons in help DM
@@ -340,17 +366,38 @@ async def cmd_help(client: Client, message):
 async def cb_start(client: Client, query):
     try:
         await query.answer()
-        await cmd_start(client, await client.get_messages(query.from_user.id, 1))
+        # Send a fresh start DM to the user (avoid relying on get_messages())
+        try:
+            me = await client.get_me()
+            text = (
+                "🛡️ *ShieldX Multi-Protection* — Active & Watching
+
+"
+                f"Hey {query.from_user.mention if query.from_user else ''} 👋
+"
+                "I'm *ShieldX*, your Telegram Guardian bot — I keep groups safe from spam, unwanted media, and NSFW content 24×7.
+
+"
+                "Use /help to see available commands."
+            )
+            buttons = [
+                [InlineKeyboardButton("🧠 Commands", callback_data="sx_help")],
+                [InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{ADD_TO_GROUP_USERNAME}?startgroup=true")]
+            ]
+            await client.send_message(query.from_user.id, text, reply_markup=InlineKeyboardMarkup(buttons))
+        except Exception:
+            pass
     except Exception:
         pass
 
 @bot.on_message(filters.command("ping") & (filters.private | filters.group))
-async def cmd_ping(client: Client, message):
+async def cmd_ping(client: Client, message: Message):
     try:
         t0 = time.time()
         m = await message.reply_text("🏓 Pinging...")
         ms = int((time.time() - t0) * 1000)
-        await m.edit_text(f"🩵 ShieldX Online!\n⚡ {ms}ms | Uptime: {int(time.time())}")
+        await m.edit_text(f"🩵 ShieldX Online!
+⚡ {ms}ms | Uptime: {int(time.time())}")
     except Exception:
         try:
             await message.reply_text("🩵 ShieldX Online!")
@@ -359,7 +406,7 @@ async def cmd_ping(client: Client, message):
 
 # ---------- STATUS (group-only) ----------
 @bot.on_message(filters.command("status") & filters.group)
-async def cmd_status(client: Client, message):
+async def cmd_status(client: Client, message: Message):
     try:
         cfg = ensure_chat(message.chat.id)
         on = "ON" if cfg.get("clean_on") else "OFF"
@@ -367,9 +414,12 @@ async def cmd_status(client: Client, message):
         nsfw = "Active" if cfg.get("nsfw_on", True) else "Off"
         # Watchdog always running on this process if started
         status_msg = (
-            f"🧭 ShieldX Status:\n"
-            f"🧹 Auto-clean: {on} (every {fmt_interval(interval)})\n"
-            f"🔞 NSFW filter: {nsfw}\n"
+            f"🧭 ShieldX Status:
+"
+            f"🧹 Auto-clean: {on} (every {fmt_interval(interval)})
+"
+            f"🔞 NSFW filter: {nsfw}
+"
             f"💤 Watchdog: Running"
         )
         await message.reply_text(status_msg, quote=False)
@@ -378,7 +428,7 @@ async def cmd_status(client: Client, message):
 
 # ---------- CLEAN commands (group-only) ----------
 @bot.on_message(filters.command(["clean", "clean_on"], prefixes=["/", "!", "."]) & filters.group)
-async def cmd_clean_on(client: Client, message):
+async def cmd_clean_on(client: Client, message: Message):
     # admin-only; if non-admin in DM -> silent ignore
     try:
         user_id = message.from_user.id if message.from_user else None
@@ -401,7 +451,7 @@ async def cmd_clean_on(client: Client, message):
         print("cmd_clean_on error:", e)
 
 @bot.on_message(filters.command("clean_custom") & filters.group)
-async def cmd_clean_custom(client: Client, message):
+async def cmd_clean_custom(client: Client, message: Message):
     try:
         user_id = message.from_user.id if message.from_user else None
         if not user_id:
@@ -440,7 +490,7 @@ async def cmd_clean_custom(client: Client, message):
         print("cmd_clean_custom error:", e)
 
 @bot.on_message(filters.command(["clean_off", "cleanoff"]) & filters.group)
-async def cmd_clean_off(client: Client, message):
+async def cmd_clean_off(client: Client, message: Message):
     try:
         user_id = message.from_user.id if message.from_user else None
         if not user_id:
@@ -460,7 +510,7 @@ async def cmd_clean_off(client: Client, message):
         print("cmd_clean_off error:", e)
 
 @bot.on_message(filters.command("clean_now") & filters.group)
-async def cmd_clean_now(client: Client, message):
+async def cmd_clean_now(client: Client, message: Message):
     # Immediately attempt to delete recent media (best-effort)
     try:
         user_id = message.from_user.id if message.from_user else None
@@ -504,7 +554,7 @@ async def cmd_clean_now(client: Client, message):
         print("cmd_clean_now error:", e)
 
 @bot.on_message(filters.command("cleanall") & filters.group)
-async def cmd_cleanall(client: Client, message):
+async def cmd_cleanall(client: Client, message: Message):
     # Admin/owner-only; delete media from last 24 hours
     try:
         user_id = message.from_user.id if message.from_user else None
@@ -551,9 +601,40 @@ async def cmd_cleanall(client: Client, message):
     except Exception as e:
         print("cmd_cleanall error:", e)
 
+# ========== /delay (group-only) — new update kept; DM disabled ==========
+@bot.on_message(filters.command("delay") & filters.group)
+async def cmd_delay(client: Client, message: Message):
+    try:
+        user_id = message.from_user.id if message.from_user else None
+        if not user_id:
+            return
+        if not await is_admin_or_owner(client, message.chat.id, user_id):
+            try:
+                await message.reply_text("❌ You must be an admin or the owner to set action delay.", quote=True)
+            except:
+                pass
+            return
+        parts = message.text.split(maxsplit=1)
+        if len(parts) < 2:
+            await message.reply_text("Usage: /delay <seconds> — set delay for moderation actions in this group.", quote=True)
+            return
+        try:
+            sec = int(parts[1].strip())
+            if sec < 0:
+                raise ValueError
+        except Exception:
+            await message.reply_text("Please provide a valid non-negative integer number of seconds.", quote=True)
+            return
+        cfg = ensure_chat(message.chat.id)
+        cfg["action_delay_seconds"] = sec
+        save_data(DATA)
+        await message.reply_text(f"✅ Action delay set to {sec} second(s) for this group.", quote=True)
+    except Exception as e:
+        print("cmd_delay error:", e)
+
 # ========== NSFW / media handler (group-only) ==========
 @bot.on_message(filters.group & (filters.photo | filters.video | filters.document | filters.animation | filters.sticker))
-async def media_handler(client: Client, message):
+async def media_handler(client: Client, message: Message):
     # If no from_user (channel, anonymous), skip
     if message.from_user is None:
         return
@@ -631,6 +712,10 @@ async def media_handler(client: Client, message):
                     return
                 until_ts = int(time.time()) + (10 * 365 * 24 * 3600)  # effectively permanent
                 perm = types.ChatPermissions(can_send_messages=False, can_send_media_messages=False, can_send_other_messages=False, can_add_web_page_previews=False)
+                # Respect configured action delay if any
+                action_delay = cfg.get("action_delay_seconds", 0)
+                if action_delay and action_delay > 0:
+                    await asyncio.sleep(int(action_delay))
                 await client.restrict_chat_member(chat_id, int(user_id), permissions=perm, until_date=until_ts)
                 await client.send_message(chat_id, f"🚫 User muted for repeated NSFW violations.")
                 # clear user's counter
@@ -661,7 +746,7 @@ async def schedule_delete(client: Client, chat_id: int, msg_id: int, delay: int)
 
 # ========== Auto-enable when added to group ==========
 @bot.on_message(filters.new_chat_members)
-async def on_added_to_group(client: Client, message):
+async def on_added_to_group(client: Client, message: Message):
     # When the bot is added to a group, check and set defaults for that chat
     try:
         for m in message.new_chat_members:
@@ -683,7 +768,7 @@ async def on_added_to_group(client: Client, message):
 
 # ========== /lang (DM only) ==========
 @bot.on_message(filters.command("lang") & filters.private)
-async def cmd_lang(client: Client, message):
+async def cmd_lang(client: Client, message: Message):
     try:
         parts = message.text.split(maxsplit=1)
         if len(parts) < 2:
