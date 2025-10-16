@@ -426,211 +426,164 @@ async def cmd_status(client: Client, message: Message):
     except Exception:
         pass
 
-# ---------- CLEAN commands (group-only) ----------
-@bot.on_message(filters.command(["clean", "clean_on"], prefixes=["/", "!", "."]) & filters.group)
+# ============================================================
+# 🧹 CLEAN SYSTEM — GLOBAL AUTO MEDIA CLEANER (ShieldX v4)
+# ============================================================
+
+# ---------- /clean (enable auto-clean globally) ----------
+@bot.on_message(filters.command("clean") & filters.group)
 async def cmd_clean_on(client: Client, message: Message):
-    # admin-only; if non-admin in DM -> silent ignore
+    """Enable automatic background cleaning for media in this group."""
     try:
         user_id = message.from_user.id if message.from_user else None
-        if not user_id:
-            return
-        if not await is_admin_or_owner(client, message.chat.id, user_id):
-            # silent in group? No — inform in group only when non-admin tries
-            try:
-                await message.reply_text("❌ You must be an admin or the owner to use this command.", quote=True)
-            except:
-                pass
-            return
+        if not user_id or not await is_admin_or_owner(client, message.chat.id, user_id):
+            return  # ignore silently for non-admins
+
         cfg = ensure_chat(message.chat.id)
         cfg["clean_on"] = True
-        cfg["clean_interval_minutes"] = 30
+        if "clean_interval_minutes" not in cfg:
+            cfg["clean_interval_minutes"] = 30
         save_data(DATA)
-        start_clean_task_if_needed(client, message.chat.id)
-        await message.reply_text("✅ Auto-clean enabled — media will be removed every 30 minutes.", quote=True)
+
+        start_global_clean_task(client, message.chat.id)
+
+        await message.reply_text(
+            f"✅ Auto-clean enabled — every {cfg['clean_interval_minutes']} minutes media will be cleaned in background.",
+            quote=True,
+        )
     except Exception as e:
         print("cmd_clean_on error:", e)
 
-@bot.on_message(filters.command("clean_custom") & filters.group)
-async def cmd_clean_custom(client: Client, message: Message):
+
+# ---------- /delay (set custom clean interval globally) ----------
+@bot.on_message(filters.command("delay") & filters.group)
+async def cmd_delay(client: Client, message: Message):
+    """Set custom interval for auto-clean task in minutes."""
     try:
         user_id = message.from_user.id if message.from_user else None
-        if not user_id:
-            return
-        if not await is_admin_or_owner(client, message.chat.id, user_id):
-            try:
-                await message.reply_text("❌ You must be an admin or the owner to use this command.", quote=True)
-            except:
-                pass
-            return
+        if not user_id or not await is_admin_or_owner(client, message.chat.id, user_id):
+            return  # ignore silently
+
         parts = message.text.split(maxsplit=1)
         if len(parts) < 2:
-            await message.reply_text("Usage: /clean_custom <time> (e.g., 20m, 1h)", quote=True)
+            await message.reply_text("Usage: /delay <minutes> — e.g. `/delay 45`", quote=True)
             return
-        token = parts[1].strip().lower()
-        minutes = None
+
         try:
-            if token.endswith("m"):
-                minutes = int(token[:-1])
-            elif token.endswith("h"):
-                minutes = int(token[:-1]) * 60
-            elif token.isdigit():
-                minutes = int(token)
-        except:
-            minutes = None
-        if minutes is None or minutes < 1 or minutes > 1440:
-            await message.reply_text("⚠️ /clean_custom supports 1m to 24h only (e.g., 20m, 1h).", quote=True)
+            minutes = int(parts[1].strip())
+            if minutes < 1 or minutes > 1440:
+                raise ValueError
+        except Exception:
+            await message.reply_text("⚠️ Please enter valid minutes between 1–1440.", quote=True)
             return
+
         cfg = ensure_chat(message.chat.id)
-        cfg["clean_on"] = True
         cfg["clean_interval_minutes"] = minutes
         save_data(DATA)
-        start_clean_task_if_needed(client, message.chat.id)
-        await message.reply_text(f"✅ Auto-clean enabled — media will be removed every {fmt_interval(minutes)}.", quote=True)
-    except Exception as e:
-        print("cmd_clean_custom error:", e)
 
-@bot.on_message(filters.command(["clean_off", "cleanoff"]) & filters.group)
-async def cmd_clean_off(client: Client, message: Message):
-    try:
-        user_id = message.from_user.id if message.from_user else None
-        if not user_id:
-            return
-        if not await is_admin_or_owner(client, message.chat.id, user_id):
-            try:
-                await message.reply_text("❌ You must be an admin or the owner to use this command.", quote=True)
-            except:
-                pass
-            return
-        cfg = ensure_chat(message.chat.id)
-        cfg["clean_on"] = False
-        save_data(DATA)
-        stop_clean_task(message.chat.id)
-        await message.reply_text("🛑 Auto-clean disabled.", quote=True)
-    except Exception as e:
-        print("cmd_clean_off error:", e)
+        start_global_clean_task(client, message.chat.id)
 
-@bot.on_message(filters.command("clean_now") & filters.group)
-async def cmd_clean_now(client: Client, message: Message):
-    # Immediately attempt to delete recent media (best-effort)
-    try:
-        user_id = message.from_user.id if message.from_user else None
-        if not user_id or not await is_admin_or_owner(client, message.chat.id, user_id):
-            try:
-                await message.reply_text("❌ You must be an admin or the owner to use this command.", quote=True)
-            except:
-                pass
-            return
-        await message.reply_text("🧹 Cleaning recent media (this may take a short while)...", quote=True)
-        deleted = 0
-        batch = []
-        async for m in client.get_chat_history(message.chat.id, limit=1000):
-            if m.media:
-                batch.append(m.message_id)
-                if len(batch) >= 20:
-                    try:
-                        await client.delete_messages(message.chat.id, batch)
-                        deleted += len(batch)
-                    except:
-                        for mid in batch:
-                            try:
-                                await client.delete_messages(message.chat.id, mid)
-                                deleted += 1
-                            except:
-                                pass
-                    batch.clear()
-        if batch:
-            try:
-                await client.delete_messages(message.chat.id, batch)
-                deleted += len(batch)
-            except:
-                for mid in batch:
-                    try:
-                        await client.delete_messages(message.chat.id, mid)
-                        deleted += 1
-                    except:
-                        pass
-        await message.reply_text(f"✅ Clean complete — removed {deleted} media items.", quote=True)
+        await message.reply_text(
+            f"⏱ Auto-clean interval updated — every {minutes} minute(s) background cleaning will run.",
+            quote=True,
+        )
     except Exception as e:
-        print("cmd_clean_now error:", e)
+        print("cmd_delay error:", e)
 
+
+# ---------- /cleanall (manual full clean) ----------
 @bot.on_message(filters.command("cleanall") & filters.group)
 async def cmd_cleanall(client: Client, message: Message):
-    # Admin/owner-only; delete media from last 24 hours
+    """Manually clean all recent media from last 24h."""
     try:
         user_id = message.from_user.id if message.from_user else None
         if not user_id or not await is_admin_or_owner(client, message.chat.id, user_id):
-            try:
-                await message.reply_text("❌ You must be an admin or the owner to use this command.", quote=True)
-            except:
-                pass
             return
-        await message.reply_text("🧹 Starting safe media delete for last 24h... This may take a while.", quote=True)
-        cutoff = datetime.utcnow() - timedelta(hours=24)
-        deleted = 0
-        batch = []
-        async for m in client.get_chat_history(message.chat.id, limit=5000):
-            msg_date = m.date if not (hasattr(m.date, "tzinfo") and m.date.tzinfo is not None) else m.date.replace(tzinfo=None)
-            if msg_date < cutoff:
-                break
-            if m.media:
-                batch.append(m.message_id)
-                if len(batch) >= 20:
-                    try:
-                        await client.delete_messages(message.chat.id, batch)
-                        deleted += len(batch)
-                    except:
-                        for mid in batch:
-                            try:
-                                await client.delete_messages(message.chat.id, mid)
-                                deleted += 1
-                            except:
-                                pass
-                    batch.clear()
-        if batch:
-            try:
-                await client.delete_messages(message.chat.id, batch)
-                deleted += len(batch)
-            except:
-                for mid in batch:
-                    try:
-                        await client.delete_messages(message.chat.id, mid)
-                        deleted += 1
-                    except:
-                        pass
-        await message.reply_text(f"✅ Media delete complete — removed {deleted} media items from last 24h.", quote=True)
+
+        await message.reply_text("🧹 Starting deep clean... this may take a few minutes.", quote=True)
+
+        deleted = await full_chat_clean(client, message.chat.id, hours=24)
+
+        await message.reply_text(f"✅ Clean complete — removed {deleted} media items.", quote=True)
     except Exception as e:
         print("cmd_cleanall error:", e)
 
-# ========== /delay (group-only) — new update kept; DM disabled ==========
-@bot.on_message(filters.command("delay") & filters.group)
-async def cmd_delay(client: Client, message: Message):
-    try:
-        user_id = message.from_user.id if message.from_user else None
-        if not user_id:
-            return
-        if not await is_admin_or_owner(client, message.chat.id, user_id):
-            try:
-                await message.reply_text("❌ You must be an admin or the owner to set action delay.", quote=True)
-            except:
-                pass
-            return
-        parts = message.text.split(maxsplit=1)
-        if len(parts) < 2:
-            await message.reply_text("Usage: /delay <seconds> — set delay for moderation actions in this group.", quote=True)
-            return
+
+# ============================================================
+# ⚙️ BACKGROUND CLEANER TASKS
+# ============================================================
+
+GLOBAL_CLEAN_TASKS = {}
+
+def start_global_clean_task(client: Client, chat_id: int):
+    """Start or restart auto-clean loop for given chat."""
+    if chat_id in GLOBAL_CLEAN_TASKS and not GLOBAL_CLEAN_TASKS[chat_id].done():
+        return  # already running
+
+    task = asyncio.create_task(global_clean_loop(client, chat_id))
+    GLOBAL_CLEAN_TASKS[chat_id] = task
+
+
+async def global_clean_loop(client: Client, chat_id: int):
+    """Loop that runs periodically to clean all media messages."""
+    while True:
         try:
-            sec = int(parts[1].strip())
-            if sec < 0:
-                raise ValueError
-        except Exception:
-            await message.reply_text("Please provide a valid non-negative integer number of seconds.", quote=True)
-            return
-        cfg = ensure_chat(message.chat.id)
-        cfg["action_delay_seconds"] = sec
-        save_data(DATA)
-        await message.reply_text(f"✅ Action delay set to {sec} second(s) for this group.", quote=True)
+            cfg = ensure_chat(chat_id)
+            if not cfg.get("clean_on"):
+                break
+
+            minutes = cfg.get("clean_interval_minutes", 30)
+            await full_chat_clean(client, chat_id, hours=24)
+            await asyncio.sleep(minutes * 60)
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"global_clean_loop error ({chat_id}):", e)
+            await asyncio.sleep(60)
+
+
+async def full_chat_clean(client: Client, chat_id: int, hours: int = 24):
+    """Delete all media messages within the last N hours."""
+    deleted = 0
+    batch = []
+    try:
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        async for msg in client.get_chat_history(chat_id, limit=5000):
+            msg_date = msg.date if not (hasattr(msg.date, "tzinfo") and msg.date.tzinfo) else msg.date.replace(tzinfo=None)
+            if msg_date < cutoff:
+                break
+            if msg.media:
+                batch.append(msg.message_id)
+                if len(batch) >= 20:
+                    try:
+                        await client.delete_messages(chat_id, batch)
+                        deleted += len(batch)
+                    except Exception:
+                        for mid in batch:
+                            try:
+                                await client.delete_messages(chat_id, mid)
+                                deleted += 1
+                            except:
+                                pass
+                    batch.clear()
+
+        if batch:
+            try:
+                await client.delete_messages(chat_id, batch)
+                deleted += len(batch)
+            except Exception:
+                for mid in batch:
+                    try:
+                        await client.delete_messages(chat_id, mid)
+                        deleted += 1
+                    except:
+                        pass
+
     except Exception as e:
-        print("cmd_delay error:", e)
+        print("full_chat_clean error:", e)
+
+    return deleted
 
 # ========== NSFW / media handler (group-only) ==========
 @bot.on_message(filters.group & (filters.photo | filters.video | filters.document | filters.animation | filters.sticker))
@@ -766,28 +719,55 @@ async def on_added_to_group(client: Client, message: Message):
     except Exception:
         pass
 
-# ========== /lang (DM only) ==========
+# ========== /lang (DM only, list-based selector) ==========
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+# List of available languages
+LANG_OPTIONS = [
+    ("English", "en"), ("हिंदी", "hi"), ("Español", "es"), ("Français", "fr"),
+    ("Deutsch", "de"), ("Русский", "ru"), ("العربية", "ar"), ("Português", "pt"),
+    ("বাংলা", "bn"), ("日本語", "ja"), ("한국어", "ko"), ("Türkçe", "tr")
+]
+
+# Build inline keyboard (4 columns)
+def build_lang_keyboard():
+    buttons, row = [], []
+    for i, (name, code) in enumerate(LANG_OPTIONS, start=1):
+        row.append(InlineKeyboardButton(name, callback_data=f"sx_lang_{code}"))
+        if i % 4 == 0:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    return InlineKeyboardMarkup(buttons)
+
 @bot.on_message(filters.command("lang") & filters.private)
-async def cmd_lang(client: Client, message: Message):
+async def cmd_lang(client, message):
     try:
-        parts = message.text.split(maxsplit=1)
-        if len(parts) < 2:
-            await message.reply_text("Usage: /lang <code> (example: en, hi).", quote=True)
-            return
-        code = parts[1].strip().lower()
-        # For this simplified build we keep language persistence minimal; store per-user pref
+        kb = build_lang_keyboard()
+        await message.reply_text("🌐 Select your language:", reply_markup=kb, quote=True)
+    except Exception as e:
+        print("lang cmd error:", e)
+
+@bot.on_callback_query(filters.regex(r"^sx_lang_"))
+async def cb_lang_select(client, query):
+    try:
+        await query.answer()
+        code = query.data.replace("sx_lang_", "").strip().lower()
+        name = next((n for n, c in LANG_OPTIONS if c == code), code)
         udata = DATA.setdefault("users", {})
-        udata[str(message.from_user.id)] = {"lang": code}
+        udata[str(query.from_user.id)] = {"lang": code}
         save_data(DATA)
-        await message.reply_text(f"🌐 Language preference saved: {code}", quote=True)
-    except Exception:
-        pass
+        await query.message.edit_text(f"🌐 Language set: {name} ({code})")
+    except Exception as e:
+        print("lang select error:", e)
+
 
 # ========== Watchdog & background ==========
 async def background_keepalive():
     while True:
         print("💤 Ping: ShieldX alive...")
-        await asyncio.sleep(300)
+        await asyncio.sleep(5)  # user wanted fast ping (5s) for visibility
 
 async def watchdog_task(bot_client: Client):
     while True:
@@ -801,12 +781,18 @@ async def watchdog_task(bot_client: Client):
 # ========== Startup ==========
 async def main():
     log_module_status()
-    try:
-        await bot.start()
-        print("✅ Pyrogram client started.")
-    except Exception as e:
-        print("❌ Failed to start Pyrogram client:", e)
-        return
+    # Try to start pyrogram client with auto-retry
+    backoff = 1
+    while True:
+        try:
+            await bot.start()
+            print("✅ Pyrogram client started.")
+            break
+        except Exception as e:
+            print("❌ Failed to start Pyrogram client:", e)
+            print(f"⏳ Retrying in {backoff} seconds...")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 60)
 
     # start keepalive/watchdog/background
     asyncio.create_task(background_keepalive())
@@ -826,14 +812,32 @@ async def main():
     print("🩵 Background keepalive + watchdog running.")
     await asyncio.Event().wait()
 
+# -------------------------
+# SINGLE CLEAN STARTUP BLOCK
+# (This replaces duplicate startup blocks and prevents double-start / freezes)
+# -------------------------
 if __name__ == "__main__":
-    # start flask thread
+    # choose a free port (try env PORT first, then search forward)
     try:
-        threading.Thread(target=run_flask, daemon=True).start()
+        chosen_port = find_free_port(PORT, search_range=100)
+        if chosen_port != PORT:
+            print(f"⚠️ Preferred port {PORT} busy — using fallback port {chosen_port}.")
+        else:
+            print(f"Using preferred port {PORT} for Flask keepalive.")
+        PORT = chosen_port
+    except Exception as e:
+        print("Port selection error:", e)
+
+    # start flask thread (daemon so it won't block shutdown)
+    try:
+        threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
+        # keepalive thread uses blocking time.sleep loop to avoid freezing input on ctrl+c
+        threading.Thread(target=lambda: asyncio.run(background_keepalive()), daemon=True).start()
     except Exception as e:
         print("⚠️ Failed to start keepalive Flask thread:", e)
 
+    # run main pyrogram startup loop (CTRL+C will stop asyncio.run cleanly)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Shutdown requested, exiting...")
+      print("Shutdown requested, exiting...")
