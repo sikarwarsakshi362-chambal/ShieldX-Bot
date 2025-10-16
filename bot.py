@@ -280,7 +280,7 @@ async def cb_help(client: Client, query):
         await query.answer()
         # Deliver same as /help DM
         help_text = (
-           # ========== HELP & COMMAND MENU (START + HELP SECTIONS) ==========
+         # ========== 🧠 HELP & COMMAND MENU (START + HELP SECTIONS) ==========
 
 @bot.on_callback_query(filters.regex(r"^sx_help$"))
 async def cb_help(client: Client, query):
@@ -295,15 +295,20 @@ async def cb_help(client: Client, query):
             "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute\n"
             "🧭 /status — current protection status (group-only)\n"
             "🌐 /lang <code> — change language for this chat (DM only)\n\n"
-            "Pro tip: Add ShieldX as admin in your group for full permissions."
+            "Pro tip: Add ShieldX as admin in your group for full permissions.\n"
+            f"Support: {SUPPORT_LINK}"
         )
+        buttons = [
+            [InlineKeyboardButton("🔙 Back to Start", callback_data="sx_start")],
+            [
+                InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{ADD_TO_GROUP_USERNAME}?startgroup=true"),
+                InlineKeyboardButton("💙 Support", url=SUPPORT_LINK)
+            ]
+        ]
         try:
-            await query.message.edit_text(help_text)
+            await query.message.edit_text(help_text, reply_markup=InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
         except:
-            try:
-                await client.send_message(query.from_user.id, help_text)
-            except:
-                pass
+            await client.send_message(query.from_user.id, help_text, reply_markup=InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
     except Exception:
         pass
 
@@ -323,7 +328,6 @@ async def cmd_help(client: Client, message: Message):
             "Pro tip: Add ShieldX as admin in your group for full permissions.\n"
             f"Support: {SUPPORT_LINK}"
         )
-
         if message.chat.type == "private":
             buttons = [
                 [InlineKeyboardButton("🔙 Back to Start", callback_data="sx_start")],
@@ -334,14 +338,36 @@ async def cmd_help(client: Client, message: Message):
             ]
             await message.reply_text(help_text, reply_markup=InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
         else:
-            try:
-                await message.reply_text("📘 Help menu sent to your DM 💌", quote=False)
-            except ChatWriteForbidden:
-                pass
+            gc_button = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("💌 Open Help in DM", url=f"https://t.me/{ADD_TO_GROUP_USERNAME}?start=help")]]
+            )
+            await message.reply_text("📘 Help menu sent to your DM 💌", reply_markup=gc_button, quote=False)
             try:
                 await client.send_message(message.from_user.id, help_text)
             except Exception:
                 pass
+    except Exception:
+        pass
+
+
+@bot.on_callback_query(filters.regex(r"^sx_start$"))
+async def cb_start(client: Client, query):
+    try:
+        await query.answer()
+        me = await client.get_me()
+        text = (
+            "🛡️ *ShieldX Multi-Protection* — Active & Watching\n\n"
+            f"Hey {query.from_user.mention if query.from_user else ''} 👋\n"
+            "I'm *ShieldX*, your Telegram Guardian bot — keeping groups safe from spam, unwanted media, "
+            "and NSFW content 24×7.\n\n"
+            "Use /help to see available commands."
+        )
+        buttons = [
+            [InlineKeyboardButton("🧠 Commands", callback_data="sx_help")],
+            [InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{ADD_TO_GROUP_USERNAME}?startgroup=true")],
+            [InlineKeyboardButton("💙 Support", url=SUPPORT_LINK)]
+        ]
+        await client.send_message(query.from_user.id, text, reply_markup=InlineKeyboardMarkup(buttons))
     except Exception:
         pass
 
