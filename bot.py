@@ -280,30 +280,26 @@ async def cb_help(client: Client, query):
         await query.answer()
         # Deliver same as /help DM
         help_text = (
-            "💡 *ShieldX Commands & Usage Guide*
+           # ========== HELP & COMMAND MENU (START + HELP SECTIONS) ==========
 
-"
-            "🧹 /clean on — enable auto media cleanup (default 30m)
-"
-            "🧼 /delay <20m|1h|2h> — set custom cleanup interval
-"
-            "🛑 /clean off — disable auto-clean
-"
-         "🧹 /cleanall — delete media from last 24h (admin only)
-"
-            "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute
-"
-            "🧭 /status — current protection status (group-only)
-"
-            "🌐 /lang <code> — change language for this chat (DM only)
-"
-            "
-Pro tip: Add ShieldX as admin in your group for full permissions."
+@bot.on_callback_query(filters.regex(r"^sx_help$"))
+async def cb_help(client: Client, query):
+    try:
+        await query.answer()
+        help_text = (
+            "💡 *ShieldX Commands & Usage Guide*\n\n"
+            "🧹 /clean on — enable auto media cleanup (default 30m)\n"
+            "🧼 /delay <20m|1h|2h> — set custom cleanup interval\n"
+            "🛑 /clean off — disable auto-clean\n"
+            "🧹 /cleanall — delete media from last 24h (admin only)\n"
+            "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute\n"
+            "🧭 /status — current protection status (group-only)\n"
+            "🌐 /lang <code> — change language for this chat (DM only)\n\n"
+            "Pro tip: Add ShieldX as admin in your group for full permissions."
         )
         try:
             await query.message.edit_text(help_text)
         except:
-            # fallback to DM
             try:
                 await client.send_message(query.from_user.id, help_text)
             except:
@@ -311,48 +307,39 @@ Pro tip: Add ShieldX as admin in your group for full permissions."
     except Exception:
         pass
 
+
 @bot.on_message(filters.command("help") & (filters.private | filters.group))
 async def cmd_help(client: Client, message: Message):
     try:
+        help_text = (
+            "💡 *ShieldX Commands & Usage Guide*\n\n"
+            "🧹 /clean on — enable auto media cleanup (default 30m)\n"
+            "🧼 /delay <20m|1h|2h> — set custom cleanup interval\n"
+            "🛑 /clean off — disable auto-clean\n"
+            "🧹 /cleanall — delete media from last 24h (admin only)\n"
+            "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute\n"
+            "🧭 /status — current protection status (group-only)\n"
+            "🌐 /lang <code> — change language for this chat (DM only)\n\n"
+            "Pro tip: Add ShieldX as admin in your group for full permissions.\n"
+            f"Support: {SUPPORT_LINK}"
+        )
+
         if message.chat.type == "private":
-            help_text = (
-                "💡 *ShieldX Commands & Usage Guide*
-
-"
-                "🧹 /clean on — enable auto media cleanup (default 30m)
-"
-                "🧼 /delay <20m|1h|2h> — set custom cleanup interval
-"
-                "🛑 /clean off — disable auto-clean
-"
-                "🧹 /cleanall — delete media from last 24h (admin only)
-"
-                "🔞 NSFW — automatic detection & delete; 5 NSFW posts in 3s = mute
-"
-                "🧭 /status — current protection status (group-only)
-"
-                "🌐 /lang <code> — change language for this chat (DM only)
-
-"
-                "Pro tip: Add ShieldX as admin in your group for full permissions.
-"
-                "Support: " + SUPPORT_LINK
-            )
-            # attach quick buttons in help DM
             buttons = [
                 [InlineKeyboardButton("🔙 Back to Start", callback_data="sx_start")],
-                [InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{ADD_TO_GROUP_USERNAME}?startgroup=true"),
-                 InlineKeyboardButton("💙 Support", url=SUPPORT_LINK)]
+                [
+                    InlineKeyboardButton("➕ Add to Group", url=f"https://t.me/{ADD_TO_GROUP_USERNAME}?startgroup=true"),
+                    InlineKeyboardButton("💙 Support", url=SUPPORT_LINK)
+                ]
             ]
             await message.reply_text(help_text, reply_markup=InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
         else:
-            # Group: short notice, send DM
             try:
                 await message.reply_text("📘 Help menu sent to your DM 💌", quote=False)
             except ChatWriteForbidden:
                 pass
             try:
-                await client.send_message(message.from_user.id, "📘 Help menu (also sent because you asked /help in group). Use /help here to view again.")
+                await client.send_message(message.from_user.id, help_text)
             except Exception:
                 pass
     except Exception:
