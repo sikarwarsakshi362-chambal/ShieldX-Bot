@@ -824,13 +824,27 @@ async def background_keepalive():
         try:
             print("💤 Ping: ShieldX alive...")  # Local log ping
             # every 10 min, hit own webservice to keep Render awake
-            if int(time.time()) % 600 < 5:  
+            if int(time.time()) % 600 < 5:
                 render_url = os.getenv("RENDER_URL", "https://shieldx-bot-1.onrender.com")
                 requests.get(render_url, timeout=5)
                 print(f"🌐 External keepalive ping sent to {render_url}")
         except Exception as e:
             print("Keepalive error:", e)
-        await asyncio.sleep(5)
+        await asyncio.sleep(5)  # 5-second local ping
+
+async def watchdog_task(bot_client: Client):
+    while True:
+        try:
+            if OWNER_ID:
+                await bot_client.send_message(
+                    OWNER_ID,
+                    "🩵 ShieldX watchdog ping OK.",
+                    disable_notification=True
+                )
+        except Exception:
+            pass
+        await asyncio.sleep(1800)  # 30-minute watchdog ping
+
 
 # ========== Startup ==========
 async def main():
