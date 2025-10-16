@@ -430,7 +430,7 @@ async def cmd_ping(client: Client, message: Message):
             await message.reply_text("🩵 ShieldX Online!")
         except:
             pass
-
+            
 
 # ---------- STATUS (group-only) ----------
 @ bot.on_message(filters.command("status") & filters.group)
@@ -450,6 +450,10 @@ async def cmd_status(client: Client, message: Message):
         await message.reply_text(status_msg, quote=False)
     except Exception:
         pass
+        @bot.on_message(filters.command("test"))
+async def test_cmd(client, message):
+    print("✅ TEST COMMAND RECEIVED")
+    await message.reply("✅ Bot working")
 
 
 # ============================================================
