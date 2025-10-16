@@ -898,8 +898,6 @@ def find_free_port(start_port, search_range=50):
             except OSError:
                 continue
     return start_port
-
-
 def run_flask(port=None):
     app.run(host="0.0.0.0", port=port or PORT)
 
@@ -914,6 +912,12 @@ if __name__ == "__main__":
         PORT = chosen_port
     except Exception as e:
         print("Port selection error:", e)
+
+    # ✅ Run Flask in background thread (non-blocking)
+    threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
+
+    # ✅ Start async bot logic
+    asyncio.run(main())
 
     try:
         threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
