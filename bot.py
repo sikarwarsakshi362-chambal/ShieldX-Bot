@@ -430,7 +430,7 @@ async def cmd_ping(client: Client, message: Message):
             await message.reply_text("🩵 ShieldX Online!")
         except:
             pass
-
+            
 
 # ---------- STATUS (group-only) ----------
 @ bot.on_message(filters.command("status") & filters.group)
@@ -450,6 +450,10 @@ async def cmd_status(client: Client, message: Message):
         await message.reply_text(status_msg, quote=False)
     except Exception:
         pass
+@bot.on_message(filters.command("test"))
+async def test_cmd(client, message):
+    print("✅ TEST COMMAND RECEIVED")
+    await message.reply("✅ Bot working")
 
 
 # ============================================================
@@ -816,27 +820,44 @@ async def cb_lang_select(client, query):
     except Exception as e:
         print("lang select error:", e)
 
-
 # ========== Watchdog & background ==========
+import requests
+
 async def background_keepalive():
     while True:
-        print("💤 Ping: ShieldX alive...")
-        await asyncio.sleep(5)  # user wanted fast ping (5s) for visibility
+        try:
+            print("💤 Ping: ShieldX alive...")  # Local log ping
+            # every 10 min, hit own webservice to keep Render awake
+            if int(time.time()) % 600 < 5:
+                render_url = os.getenv("RENDER_URL", "https://shieldx-bot-1.onrender.com")
+                requests.get(render_url, timeout=5)
+                print(f"🌐 External keepalive ping sent to {render_url}")
+        except Exception as e:
+            print("Keepalive error:", e)
+        await asyncio.sleep(5)  # 5-second local ping
+
 
 async def watchdog_task(bot_client: Client):
+    """Telegram watchdog — confirms bot is still alive every 30 mins."""
     while True:
         try:
             if OWNER_ID:
-                await bot_client.send_message(OWNER_ID, "🩵 ShieldX watchdog ping OK.", disable_notification=True)
-        except Exception:
-            pass
-        await asyncio.sleep(1800)
+                await bot_client.get_me()  # confirm session still valid
+                await bot_client.send_message(
+                    OWNER_ID,
+                    "🩵 ShieldX watchdog ping OK.",
+                    disable_notification=True
+                )
+                print("🐍 Watchdog: ping sent to owner.")
+        except Exception as e:
+            print("Watchdog error:", e)
+        await asyncio.sleep(1800)  # 30-minute watchdog ping
+
 
 # ========== Startup ==========
 async def main():
     log_module_status()
-    # Try to start pyrogram client with auto-retry
-    backoff=1
+    backoff = 1
     while True:
         try:
             await bot.start()
@@ -846,18 +867,16 @@ async def main():
             print("❌ Failed to start Pyrogram client:", e)
             print(f"⏳ Retrying in {backoff} seconds...")
             await asyncio.sleep(backoff)
-            backoff=min(backoff * 2, 60)
+            backoff = min(backoff * 2, 60)
 
-    # start keepalive/watchdog/background
     asyncio.create_task(background_keepalive())
     asyncio.create_task(watchdog_task(bot))
-    # start auto-clean tasks for chats that were enabled in persisted DATA
+
     try:
         for cid, cfg in DATA.items():
-            # skip non-numeric keys
             if not cid.lstrip("-").isdigit():
                 continue
-            chat_id=int(cid)
+            chat_id = int(cid)
             if cfg.get("clean_on"):
                 start_clean_task_if_needed(bot, chat_id)
     except Exception as e:
@@ -868,35 +887,38 @@ async def main():
 
 # -------------------------
 # SINGLE CLEAN STARTUP BLOCK
-# (This replaces duplicate startup blocks and prevents double-start / freezes)
 # -------------------------
+def find_free_port(start_port, search_range=50):
+    import socket
+    for port in range(start_port, start_port + search_range):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+    return start_port
+def run_flask(port=None):
+    app.run(host="0.0.0.0", port=port or PORT)
+
+
 if __name__ == "__main__":
-    # choose a free port (try env PORT first, then search forward)
     try:
-        chosen_port=find_free_port(PORT, search_range=100)
+        chosen_port = find_free_port(PORT, search_range=100)
         if chosen_port != PORT:
-            print(
-                f"⚠️ Preferred port {PORT} busy — using fallback port {chosen_port}.")
+            print(f"⚠️ Preferred port {PORT} busy — using fallback port {chosen_port}.")
         else:
             print(f"Using preferred port {PORT} for Flask keepalive.")
-        PORT=chosen_port
+        PORT = chosen_port
     except Exception as e:
         print("Port selection error:", e)
 
-    # start flask thread (daemon so it won't block shutdown)
-    try:
-        threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
-        # keepalive thread uses blocking time.sleep loop to avoid freezing
-        # input on ctrl+c
-        threading.Thread(
-    target=lambda: asyncio.run(
-        background_keepalive()),
-         daemon=True).start()
-    except Exception as e:
-        print("⚠️ Failed to start keepalive Flask thread:", e)
+    # ✅ Run Flask in background thread
+    threading.Thread(target=run_flask, args=(PORT,), daemon=True).start()
 
-    # run main pyrogram startup loop (CTRL+C will stop asyncio.run cleanly)
+    # ✅ Start async bot logic
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-      print("Shutdown requested, exiting...")
+        print("Shutdown requested, exiting...")
+
