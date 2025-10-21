@@ -14,7 +14,7 @@ from helper.utils import (
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 
 # ====== Pyrogram Client ======
-app_bot = Client(
+app = Client(
     "ShieldX-Bot",
     api_id=API_ID,
     api_hash=API_HASH,
