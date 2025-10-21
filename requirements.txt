@@ -1,8 +1,10 @@
 pyrogram==2.0.106
 tgcrypto==1.2.5
 Flask==3.0.3
+python-dotenv==1.0.1
 requests==2.32.3
 aiohttp==3.10.5
 nest_asyncio==1.6.0
 opencv-python==4.10.0.84
-SQLAlchemy==2.0.27
+motor==3.6.0
+SQLAlchemy==1.4.47
