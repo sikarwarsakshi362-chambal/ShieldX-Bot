@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# ShieldX Protector Bot — Top Structure Strict Mode
 from pyrogram import Client, filters, errors
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions, Message
 import asyncio, threading, requests, socket
