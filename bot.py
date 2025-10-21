@@ -2,20 +2,17 @@
 # ShieldX Protector Bot — Top Structure Strict Mode
 from pyrogram import Client, filters, errors
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions, Message
-import asyncio, threading, requests, socket
-from flask import Flask
-# -*- coding: utf-8 -*-
-# ShieldX Protector Bot — Top Structure Strict Mode
-from pyrogram import Client, filters, errors
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions, Message
-import asyncio, threading, requests, socket
+import asyncio
+import threading
+import requests
+import socket
 from flask import Flask
 from pymongo import MongoClient
-from modules.config import MONGO_URI  # <- modules ke andar hai
+from modules.config import MONGO_URI  # modules folder ke andar
 
+# ====== MongoDB Setup ======
 client = MongoClient(MONGO_URI)
 db = client["shieldx_db"]
-
 
 # ====== Bot Config ======
 from helper.utils import (
