@@ -15,27 +15,40 @@ URL_PATTERN = re.compile(
     r"(https?://|www\.)[a-zA-Z0-9.\-]+(\.[a-zA-Z]{2,})+(/[a-zA-Z0-9._%+-]*)*"
 )
 
-# ====================== MongoDB Config (Render Ready) ======================
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
+# ====================== PostgreSQL Config (Render Ready) ======================
+import os
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Local MongoDB URI for Render
-MONGO_URI = "mongodb://shieldx_bot:shieldx_bot@mongo:27017/shieldxdb"
+# PostgreSQL URL (Render me env variable se set karenge)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://shieldx_bot:shieldx_bot@localhost:5432/shieldxdb")
 
-# Create a new client and connect to the server
-client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
+# Async engine
+engine = create_async_engine(DATABASE_URL, echo=False)
 
-# Send a ping to confirm a successful connection
-try:
-    client.admin.command('ping')
-    print("Pinged your deployment. You successfully connected to MongoDB!")
-except Exception as e:
-    print(e)
+# Async session
+async_session = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
+# Base class for models
+Base = declarative_base()
 
+# ====================== Default Bot Config ======================
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
 DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
+
+# Test connection (async)
+async def test_connection():
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(lambda conn: print("✅ PostgreSQL connected successfully!"))
+    except Exception as e:
+        print("❌ PostgreSQL connection failed:", e)
+
 
 # ======================= Debug & Features =======================
 DEBUG = False  # optional, True for debug prints
