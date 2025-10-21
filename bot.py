@@ -467,7 +467,6 @@ async def check_bio(client: Client, message):
 
         
 # =============================== ABUSE DETECTION ===============================
-# =============================== ABUSE DETECTION ===============================
 ABUSE_EXEMPT_IDS = [5204428223, 795935330]  # IDs jo delete nahi honge
 ABUSE_KEYWORDS = [
     "chutiya","bhosdike","lund","gandu","randi","kutti","bsdk","bahanchod",
@@ -481,7 +480,7 @@ ABUSE_STATUS = {}  # chat_id: True/False
 
 def is_abuse(text: str) -> bool:
     return any(word in text.lower() for word in ABUSE_KEYWORDS)
-
+    
 @app.on_message(filters.group & filters.text)
 async def abuse_auto_delete(client: Client, message):
     chat_id = message.chat.id
@@ -504,7 +503,8 @@ async def abuse_auto_delete(client: Client, message):
             await asyncio.sleep(5)
             await warn.delete()
         except Exception as e:
-            print(f"[ABUSE Handler] {e}")
+            # ✅ Agar delete fail ho to Render logs me error show karo
+            print(f"[ABUSE Handler ERROR] Failed to delete message from {user.id} in chat {chat_id}: {e}")
 
 # ======================= Disable all message edits =======================
 from pyrogram import Client
@@ -538,11 +538,12 @@ async def start_bot():
         except Exception as e:
             print(f"[Bot] Start failed: {e} | Retrying in 5s...")
             await asyncio.sleep(5)
-
+            
 if __name__ == "__main__":
-    # Run Flask in daemon thread
+    # Flask ko daemon thread me run karo
     threading.Thread(target=run_flask, daemon=True).start()
-    
-    # Bot start
-    app.run()  # ye hi Pyrogram ka built-in loop hai
+
+    # Async Pyrogram bot run karo
+    asyncio.run(start_bot())
+
 
