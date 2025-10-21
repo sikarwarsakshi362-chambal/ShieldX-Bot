@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: shieldx_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: shieldx_bot
+      MONGO_INITDB_ROOT_PASSWORD: shieldx_bot
+      MONGO_INITDB_DATABASE: shieldxdb
+
+  bot:
+    build: .
+    container_name: shieldx_bot
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      MONGO_URI: mongodb://shieldx_bot:shieldx_bot@mongo:27017/shieldxdb
+    command: python bot.py
