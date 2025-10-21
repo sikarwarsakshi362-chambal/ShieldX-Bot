@@ -2,99 +2,86 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "modules"))
 
 from pyrogram import Client, enums, filters
-import redis.asyncio as aioredis
-from config import redis, DEFAULT_CONFIG, DEFAULT_PUNISHMENT, DEFAULT_WARNING_LIMIT
+from motor.motor_asyncio import AsyncIOMotorClient
 
-# ====================== Redis Keys ======================
-# Redis key format for warnings, punishments, allowlists
-WARNING_KEY = "warnings:{chat_id}:{user_id}"
-PUNISHMENT_KEY = "punishments:{chat_id}"
-ALLOWLIST_KEY = "allowlist:{chat_id}"
+from config import (
+    MONGO_URI,
+    DEFAULT_CONFIG,
+    DEFAULT_PUNISHMENT,
+    DEFAULT_WARNING_LIMIT
+)
 
-# ====================== Warning Functions ======================
-async def get_warnings(chat_id: str, user_id: str):
-    """
-    Retrieve the warning count for a specific user in a chat.
-    """
-    key = WARNING_KEY.format(chat_id=chat_id, user_id=user_id)
-    warning_count = await redis.get(key)
-    return int(warning_count) if warning_count else 0
+mongo_client = AsyncIOMotorClient(MONGO_URI)
+db = mongo_client['telegram_bot_db']
+warnings_collection = db['warnings']
+punishments_collection = db['punishments']
+allowlists_collection = db['whitelists']  # collection name abhi bhi same
 
-async def increment_warning(chat_id: str, user_id: str) -> int:
-    """
-    Increment the warning count for a specific user in a chat.
-    """
-    key = WARNING_KEY.format(chat_id=chat_id, user_id=user_id)
-    new_warning_count = await redis.incr(key)
-    return new_warning_count
+async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
+    async for member in client.get_chat_members(
+        chat_id,
+        filter=enums.ChatMembersFilter.ADMINISTRATORS
+    ):
+        if member.user.id == user_id:
+            return True
+    return False
 
-async def reset_warnings(chat_id: str, user_id: str):
-    """
-    Reset the warning count for a specific user in a chat.
-    """
-    key = WARNING_KEY.format(chat_id=chat_id, user_id=user_id)
-    await redis.delete(key)
-
-# ====================== Punishment Functions ======================
-async def get_config(chat_id: str):
-    """
-    Retrieve the punishment configuration for a specific chat.
-    """
-    key = PUNISHMENT_KEY.format(chat_id=chat_id)
-    punishment_config = await redis.hgetall(key)
-    if punishment_config:
-        return punishment_config.get("mode", DEFAULT_CONFIG[0]), \
-               int(punishment_config.get("limit", DEFAULT_WARNING_LIMIT)), \
-               punishment_config.get("penalty", DEFAULT_PUNISHMENT)
+async def get_config(chat_id: int):
+    doc = await punishments_collection.find_one({'chat_id': chat_id})
+    if doc:
+        return doc.get('mode', 'warn'), doc.get('limit', DEFAULT_WARNING_LIMIT), doc.get('penalty', DEFAULT_PUNISHMENT)
     return DEFAULT_CONFIG
 
-async def update_config(chat_id: str, mode=None, limit=None, penalty=None):
-    """
-    Update the punishment configuration for a specific chat.
-    """
-    key = PUNISHMENT_KEY.format(chat_id=chat_id)
-    if mode:
-        await redis.hset(key, "mode", mode)
-    if limit:
-        await redis.hset(key, "limit", limit)
-    if penalty:
-        await redis.hset(key, "penalty", penalty)
+async def update_config(chat_id: int, mode=None, limit=None, penalty=None):
+    update = {}
+    if mode is not None:
+        update['mode'] = mode
+    if limit is not None:
+        update['limit'] = limit
+    if penalty is not None:
+        update['penalty'] = penalty
+    if update:
+        await punishments_collection.update_one(
+            {'chat_id': chat_id},
+            {'$set': update},
+            upsert=True
+        )
 
-# ====================== Allowlist Functions ======================
-async def is_allowlisted(chat_id: str, user_id: str) -> bool:
-    """
-    Check if a user is in the allowlist for a specific chat.
-    """
-    key = ALLOWLIST_KEY.format(chat_id=chat_id)
-    return await redis.sismember(key, user_id)
+async def increment_warning(chat_id: int, user_id: int) -> int:
+    await warnings_collection.update_one(
+        {'chat_id': chat_id, 'user_id': user_id},
+        {'$inc': {'count': 1}},
+        upsert=True
+    )
+    doc = await warnings_collection.find_one({'chat_id': chat_id, 'user_id': user_id})
+    return doc['count']
 
-async def add_allowlist(chat_id: str, user_id: str):
-    """
-    Add a user to the allowlist for a specific chat.
-    """
-    key = ALLOWLIST_KEY.format(chat_id=chat_id)
-    await redis.sadd(key, user_id)
+async def reset_warnings(chat_id: int, user_id: int):
+    await warnings_collection.delete_one({'chat_id': chat_id, 'user_id': user_id})
 
-async def remove_allowlist(chat_id: str, user_id: str):
-    """
-    Remove a user from the allowlist for a specific chat.
-    """
-    key = ALLOWLIST_KEY.format(chat_id=chat_id)
-    await redis.srem(key, user_id)
+# ================ Allowlist functions ================
+async def is_allowlisted(chat_id: int, user_id: int) -> bool:
+    doc = await allowlists_collection.find_one({'chat_id': chat_id, 'user_id': user_id})
+    return bool(doc)
 
-async def get_allowlist(chat_id: str) -> list:
-    """
-    Get the list of users in the allowlist for a specific chat.
-    """
-    key = ALLOWLIST_KEY.format(chat_id=chat_id)
-    allowlist = await redis.smembers(key)
-    return list(allowlist)
+async def add_allowlist(chat_id: int, user_id: int):
+    await allowlists_collection.update_one(
+        {'chat_id': chat_id, 'user_id': user_id},
+        {'$set': {'user_id': user_id}},
+        upsert=True
+    )
 
-# ====================== Misc Default Settings ======================
+async def remove_allowlist(chat_id: int, user_id: int):
+    await allowlists_collection.delete_one({'chat_id': chat_id, 'user_id': user_id})
+
+async def get_allowlist(chat_id: int) -> list:
+    cursor = allowlists_collection.find({'chat_id': chat_id})
+    docs = await cursor.to_list(length=None)
+    return [doc['user_id'] for doc in docs]
+
+
+# Default settings for new chats (used by abuse/bio/nsfw modules)
 def get_default_settings():
-    """
-    Return default feature settings for the bot.
-    """
     return {
         "abuse_on": True,
         "nsfw_on": True,
@@ -102,4 +89,3 @@ def get_default_settings():
         "clean_on": False,
         "delete_minutes": 30
     }
-
