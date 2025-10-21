@@ -1,6 +1,5 @@
-import os
+# modules/config.py
 import re
-import redis.asyncio as aioredis
 
 # ======================= API & Bot Config =======================
 API_ID = 26250263
@@ -16,23 +15,13 @@ URL_PATTERN = re.compile(
     r"(https?://|www\.)[a-zA-Z0-9.\-]+(\.[a-zA-Z]{2,})+(/[a-zA-Z0-9._%+-]*)*"
 )
 
-# ====================== Redis Config (Render Ready) ======================
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+# ======================= MongoDB Config =======================
+MONGO_URI = "mongodb://localhost:27017/shieldx_db"
 
-# ====================== Default Bot Config ======================
+# Default warning & punishment config
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
 DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
-
-# Test connection (async) to Redis
-async def test_redis_connection():
-    try:
-        pong = await redis.ping()
-        if pong:
-            print("✅ Redis connected successfully!")
-    except Exception as e:
-        print("❌ Redis connection failed:", e)
 
 # ======================= Debug & Features =======================
 DEBUG = False  # optional, True for debug prints
