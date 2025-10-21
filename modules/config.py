@@ -16,10 +16,23 @@ URL_PATTERN = re.compile(
 )
 
 # ====================== MongoDB Config (Render Ready) ======================
-# Sirf Cloud MongoDB use hoga, local check hata diya
-MONGO_URI = "mongodb+srv://<shieldx_bot>:<6gvi4XpXsO85kL0x>@cluster0.mongodb.net/mydatabase?retryWrites=true&w=majority"
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
-# Default warning & punishment config
+# Local MongoDB URI for Render
+uri = "mongodb://shieldx_bot:shieldx_bot@localhost:27017/shieldxdb"
+
+# Create a new client and connect to the server
+client = MongoClient(uri, server_api=ServerApi('1'))
+
+# Send a ping to confirm a successful connection
+try:
+    client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(e)
+
+MONGO_URI = "mongodb+srv://<shieldx_bot>:<6gvi4XpXsO85kL0x>@clus
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
 DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
