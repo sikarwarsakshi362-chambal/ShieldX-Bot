@@ -478,24 +478,28 @@ ABUSE_STATUS = {}  # chat_id: True/False
 
 def is_abuse(text: str) -> bool:
     return any(word in text.lower() for word in ABUSE_KEYWORDS)
-    import sys
+
 from pyrogram.errors import RPCError, FloodWait, Forbidden
 
 @app.on_message(filters.group & filters.text)
-async def abuse_auto_delete(client: Client, message):
+async def abuse_auto_delete(client: Client, message: Message):
     chat_id = message.chat.id
     user = message.from_user
     if not user or user.id in ABUSE_EXEMPT_IDS:
         return
 
+    # ✅ Only text messages
+    if not message.text:
+        return
+
     try:
-        # chat admin check
+        # admin check
         member = await client.get_chat_member(chat_id, user.id)
         if member.status in ["administrator", "creator"]:
             return
-    except RPCError as e:
-        print(f"[ABUSE Handler WARNING] Could not fetch member {user.id} in chat {chat_id}: {e}", file=sys.stderr)
-        return
+    except Exception:
+        # agar fetch fail ho jaye bhi, abuse check continue ho
+        pass
 
     if not ABUSE_STATUS.get(chat_id, True):
         return
@@ -506,17 +510,17 @@ async def abuse_auto_delete(client: Client, message):
             warn = await message.reply_text(f"⚠️ {user.mention} Abusive content removed!", quote=True)
             await asyncio.sleep(5)
             await warn.delete()
-        except (Forbidden, FloodWait, RPCError) as e:
-            # ✅ Force log to Render console on delete fail
-            print(f"[ABUSE Handler ERROR] Failed to delete message from {user.id} in chat {chat_id}: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"[ABUSE Handler ERROR] {e}")
 
-# ======================= Disable all message edits =======================
-from pyrogram import Client
+
+# ======================= Edited Messages (Safe) =======================
 from pyrogram.types import Message
 import asyncio
 
-@app.on_edited_message(filters.group)
+@app.on_edited_message(filters.group & filters.text)
 async def handle_edited_message(client: Client, message: Message):
+    # ✅ Only delete if it's a text edit, reacts will not trigger
     try:
         await message.delete()
         user = message.from_user
