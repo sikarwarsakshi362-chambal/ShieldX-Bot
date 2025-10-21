@@ -6,5 +6,4 @@ requests==2.32.3
 aiohttp==3.10.5
 nest_asyncio==1.6.0
 opencv-python==4.10.0.84
-gunicorn==23.0.03
 motor==3.6.0
