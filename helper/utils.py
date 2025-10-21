@@ -2,85 +2,131 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "modules"))
 
 from pyrogram import Client, enums, filters
-from motor.motor_asyncio import AsyncIOMotorClient
-
+from sqlalchemy.ext.asyncio import AsyncSession
 from config import (
-    MONGO_URI,
+    async_session,
+    Base,
     DEFAULT_CONFIG,
     DEFAULT_PUNISHMENT,
     DEFAULT_WARNING_LIMIT
 )
+from sqlalchemy import Column, Integer, String, select
 
-mongo_client = AsyncIOMotorClient(MONGO_URI)
-db = mongo_client['telegram_bot_db']
-warnings_collection = db['warnings']
-punishments_collection = db['punishments']
-allowlists_collection = db['whitelists']  # collection name abhi bhi same
+# ====================== PostgreSQL Tables (MongoDB replaced) ======================
+class Warning(Base):
+    __tablename__ = "warnings"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chat_id = Column(String, nullable=False)
+    user_id = Column(String, nullable=False)
+    count = Column(Integer, default=0)
 
-async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
-    async for member in client.get_chat_members(
-        chat_id,
-        filter=enums.ChatMembersFilter.ADMINISTRATORS
-    ):
-        if member.user.id == user_id:
-            return True
-    return False
+class Punishment(Base):
+    __tablename__ = "punishments"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chat_id = Column(String, nullable=False)
+    mode = Column(String, default="warn")
+    limit = Column(Integer, default=DEFAULT_WARNING_LIMIT)
+    penalty = Column(String, default=DEFAULT_PUNISHMENT)
 
-async def get_config(chat_id: int):
-    doc = await punishments_collection.find_one({'chat_id': chat_id})
-    if doc:
-        return doc.get('mode', 'warn'), doc.get('limit', DEFAULT_WARNING_LIMIT), doc.get('penalty', DEFAULT_PUNISHMENT)
-    return DEFAULT_CONFIG
+class Allowlist(Base):
+    __tablename__ = "allowlists"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chat_id = Column(String, nullable=False)
+    user_id = Column(String, nullable=False)
 
-async def update_config(chat_id: int, mode=None, limit=None, penalty=None):
-    update = {}
-    if mode is not None:
-        update['mode'] = mode
-    if limit is not None:
-        update['limit'] = limit
-    if penalty is not None:
-        update['penalty'] = penalty
-    if update:
-        await punishments_collection.update_one(
-            {'chat_id': chat_id},
-            {'$set': update},
-            upsert=True
+# ====================== Warning Functions ======================
+async def get_warnings(chat_id: str, user_id: str):
+    async with async_session() as session:
+        result = await session.execute(
+            select(Warning).where(Warning.chat_id==chat_id, Warning.user_id==user_id)
         )
+        return result.scalar_one_or_none()
 
-async def increment_warning(chat_id: int, user_id: int) -> int:
-    await warnings_collection.update_one(
-        {'chat_id': chat_id, 'user_id': user_id},
-        {'$inc': {'count': 1}},
-        upsert=True
-    )
-    doc = await warnings_collection.find_one({'chat_id': chat_id, 'user_id': user_id})
-    return doc['count']
+async def increment_warning(chat_id: str, user_id: str) -> int:
+    async with async_session() as session:
+        warning = await get_warnings(chat_id, user_id)
+        if warning:
+            warning.count += 1
+            await session.commit()
+            return warning.count
+        else:
+            new_warning = Warning(chat_id=chat_id, user_id=user_id, count=1)
+            session.add(new_warning)
+            await session.commit()
+            return 1
 
-async def reset_warnings(chat_id: int, user_id: int):
-    await warnings_collection.delete_one({'chat_id': chat_id, 'user_id': user_id})
+async def reset_warnings(chat_id: str, user_id: str):
+    async with async_session() as session:
+        warning = await get_warnings(chat_id, user_id)
+        if warning:
+            await session.delete(warning)
+            await session.commit()
 
-# ================ Allowlist functions ================
-async def is_allowlisted(chat_id: int, user_id: int) -> bool:
-    doc = await allowlists_collection.find_one({'chat_id': chat_id, 'user_id': user_id})
-    return bool(doc)
+# ====================== Punishment Functions ======================
+async def get_config(chat_id: str):
+    async with async_session() as session:
+        result = await session.execute(
+            select(Punishment).where(Punishment.chat_id==chat_id)
+        )
+        doc = result.scalar_one_or_none()
+        if doc:
+            return doc.mode, doc.limit, doc.penalty
+        return DEFAULT_CONFIG
 
-async def add_allowlist(chat_id: int, user_id: int):
-    await allowlists_collection.update_one(
-        {'chat_id': chat_id, 'user_id': user_id},
-        {'$set': {'user_id': user_id}},
-        upsert=True
-    )
+async def update_config(chat_id: str, mode=None, limit=None, penalty=None):
+    async with async_session() as session:
+        result = await session.execute(
+            select(Punishment).where(Punishment.chat_id==chat_id)
+        )
+        doc = result.scalar_one_or_none()
+        if doc:
+            if mode is not None: doc.mode = mode
+            if limit is not None: doc.limit = limit
+            if penalty is not None: doc.penalty = penalty
+            await session.commit()
+        else:
+            new_doc = Punishment(
+                chat_id=chat_id,
+                mode=mode or "warn",
+                limit=limit or DEFAULT_WARNING_LIMIT,
+                penalty=penalty or DEFAULT_PUNISHMENT
+            )
+            session.add(new_doc)
+            await session.commit()
 
-async def remove_allowlist(chat_id: int, user_id: int):
-    await allowlists_collection.delete_one({'chat_id': chat_id, 'user_id': user_id})
+# ====================== Allowlist Functions ======================
+async def is_allowlisted(chat_id: str, user_id: str) -> bool:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Allowlist).where(Allowlist.chat_id==chat_id, Allowlist.user_id==user_id)
+        )
+        return result.scalar_one_or_none() is not None
 
-async def get_allowlist(chat_id: int) -> list:
-    cursor = allowlists_collection.find({'chat_id': chat_id})
-    docs = await cursor.to_list(length=None)
-    return [doc['user_id'] for doc in docs]
+async def add_allowlist(chat_id: str, user_id: str):
+    async with async_session() as session:
+        if not await is_allowlisted(chat_id, user_id):
+            session.add(Allowlist(chat_id=chat_id, user_id=user_id))
+            await session.commit()
 
+async def remove_allowlist(chat_id: str, user_id: str):
+    async with async_session() as session:
+        result = await session.execute(
+            select(Allowlist).where(Allowlist.chat_id==chat_id, Allowlist.user_id==user_id)
+        )
+        doc = result.scalar_one_or_none()
+        if doc:
+            await session.delete(doc)
+            await session.commit()
 
-# Default settings for new chats (used by abuse/bio/nsfw modules)
+async def get_allowlist(chat_id: str) -> list:
+    async with async_session() as session:
+        result = await session.execute(
+            select(Allowlist).where(Allowlist.chat_id==chat_id)
+        )
+        docs = result.scalars().all()
+        return [doc.user_id for doc in docs]
+
+# ====================== Misc Default Settings ======================
 def get_default_settings():
     return {
         "abuse_on": True,
