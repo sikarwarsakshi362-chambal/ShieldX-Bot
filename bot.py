@@ -31,22 +31,6 @@ app = Client(
 )
 
 
-# ====== Bot Config ======
-from helper.utils import (
-    is_admin, get_config, update_config, increment_warning,
-    reset_warnings, is_allowlisted, add_allowlist,
-    remove_allowlist, get_allowlist
-)
-from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
-
-# ====== Pyrogram Client ======
-app = Client(
-    "ShieldX-Bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN
-)
-
 # ====== Flask Server & Health ======
 flask_app = Flask("ShieldXBot")
 RENDER_URL = "https://shieldx-bot-1.onrender.com"
