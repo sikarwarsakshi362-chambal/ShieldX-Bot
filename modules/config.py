@@ -20,21 +20,6 @@ import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# PostgreSQL URL (Render me env variable se set karenge)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://shieldx_bot:shieldx_bot@localhost:5432/shieldxdb")
-
-# Async engine
-engine = create_async_engine(DATABASE_URL, echo=False)
-
-# Async session
-async_session = sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
-
-# Base class for models
-Base = declarative_base()
 
 # ====================== Default Bot Config ======================
 DEFAULT_WARNING_LIMIT = 3
