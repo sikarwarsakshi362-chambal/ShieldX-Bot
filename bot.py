@@ -1,20 +1,62 @@
 from pyrogram import Client, filters, errors
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions, Message
-import asyncio
+import asyncio, threading, requests, socket
+from flask import Flask
+
+# ====== Bot Config ======
 from helper.utils import (
-    is_admin,
-    get_config, update_config,
-    increment_warning, reset_warnings,
-    is_allowlisted, add_allowlist, remove_allowlist, get_allowlist
+    is_admin, get_config, update_config, increment_warning,
+    reset_warnings, is_allowlisted, add_allowlist,
+    remove_allowlist, get_allowlist
 )
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 
-app = Client(
+# ====== Pyrogram Client ======
+app_bot = Client(
     "ShieldX-Bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
+
+# ====== Flask Server & Health ======
+flask_app = Flask("ShieldXBot")
+RENDER_URL = "https://shieldx-bot-1.onrender.com"
+
+@flask_app.route("/health")
+def health():
+    return "ShieldX Bot is running ✅"
+
+def find_free_port(start_port=8080, max_port=8090):
+    for port in range(start_port, max_port + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("0.0.0.0", port))
+                return port
+            except OSError:
+                continue
+    return 8080  # fallback
+
+def run_flask():
+    port = find_free_port()
+    print(f"✅ Flask server starting on port {port} (/health)")
+    try:
+        flask_app.run(host="0.0.0.0", port=port)
+    except Exception as e:
+        print(f"[Flask] Error: {e} | Retrying...")
+        run_flask()  # self-restart on crash
+
+# ====== Watchdog ======
+async def ping_render():
+    while True:
+        try:
+            r = requests.get(RENDER_URL + "/health", timeout=5)
+            print(f"[Watchdog] Render pinged | Status: {r.status_code}")
+        except Exception as e:
+            print(f"[Watchdog] Ping failed: {e}")
+        await asyncio.sleep(5)
+
+# ====== TOP PATCH END ======
 
 
 @app.on_message(filters.command("start"))
@@ -454,6 +496,23 @@ async def handle_edited_message(client: Client, message: Message):
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
 
+# ====== Bot Start ======
+async def start_bot():
+    print("✅ ShieldX Bot running...")
+    asyncio.create_task(ping_render())
+    while True:
+        try:
+            await app_bot.start()
+            print("✅ Pyrogram client started.")
+            break
+        except Exception as e:
+            print(f"[Bot] Start failed: {e} | Retrying in 5s...")
+            await asyncio.sleep(5)
+
 if __name__ == "__main__":
-    print("✅ ShieldX Protector Bot running...")  # ye add karo
-    app.run()
+    # Run Flask in daemon thread
+    threading.Thread(target=run_flask, daemon=True).start()
+    
+    # Run bot in asyncio loop
+    asyncio.run(start_bot())
+
