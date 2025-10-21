@@ -448,56 +448,38 @@ async def check_bio(client: Client, message):
     else:
         await reset_warnings(chat_id, user_id)
 
-        
+        from pyrogram import Client, filters
+from pyrogram.types import Message
+import asyncio
+
 # =============================== ABUSE DETECTION ===============================
-ABUSE_EXEMPT_IDS = [5204428223, 795935330]  # IDs jo delete nahi honge
 ABUSE_KEYWORDS = [
-    "chutiya","bhosdike","lund","gandu","randi","kutti","bsdk","bahanchod",
-    "kutta","madarchod","sala","harami","behenchod","jhatu","lodu","choot",
-    "mc","bc","lundu","jeeja","tharki","sex","fuck","bitch","ass","cock","dick",
-    "boobs","slut","anal","cum","naked","porn","xxx","tits","pussy","fuckme",
-    "masturbate","whore","prostitute","retard","idiot","jerk","shit","damn","crap"
+    "chutiya", "bhosdike", "lund", "gandu", "randi", "kutti", "bsdk", "bahanchod",
+    "kutta", "madarchod", "sala", "harami", "behenchod", "jhatu", "lodu", "choot",
+    "mc", "bc", "lundu", "jeeja", "tharki", "sex", "fuck", "bitch", "ass", "cock", "dick",
+    "boobs", "slut", "anal", "cum", "naked", "porn", "xxx", "tits", "pussy", "fuckme",
+    "masturbate", "whore", "prostitute", "retard", "idiot", "jerk", "shit", "damn", "crap"
 ]
 ABUSE_KEYWORDS = [w.lower() for w in ABUSE_KEYWORDS]
-ABUSE_STATUS = {}  # chat_id: True/False
 
 def is_abuse(text: str) -> bool:
     return any(word in text.lower() for word in ABUSE_KEYWORDS)
 
-from pyrogram.errors import RPCError, FloodWait, Forbidden
-
 @app.on_message(filters.group & filters.text)
 async def abuse_auto_delete(client: Client, message: Message):
-    chat_id = message.chat.id
     user = message.from_user
-    if not user or user.id in ABUSE_EXEMPT_IDS:
-        return
-
-    # ✅ Only text messages
     if not message.text:
         return
 
     try:
-        # admin check
-        member = await client.get_chat_member(chat_id, user.id)
-        if member.status in ["administrator", "creator"]:
-            return
-    except Exception:
-        # agar fetch fail ho jaye bhi, abuse check continue ho
-        pass
-
-    if not ABUSE_STATUS.get(chat_id, True):
-        return
-
-    if is_abuse(message.text):
-        try:
+        # If the message contains abusive content, delete it
+        if is_abuse(message.text):
             await message.delete()
             warn = await message.reply_text(f"⚠️ {user.mention} Abusive content removed!", quote=True)
             await asyncio.sleep(5)
             await warn.delete()
-        except Exception as e:
-            print(f"[ABUSE Handler ERROR] {e}")
-
+    except Exception as e:
+        print(f"[ABUSE Handler ERROR] {e}")
 
 # ======================= Edited Messages (Safe) =======================
 from pyrogram.types import Message
@@ -506,18 +488,19 @@ import asyncio
 @app.on_edited_message(filters.group & filters.text)
 async def handle_edited_message(client: Client, message: Message):
     # ✅ Only delete if it's a text edit, reacts will not trigger
-    try:
-        await message.delete()
-        user = message.from_user
-        if user:
-            warn = await message.reply_text(
-                f"⚠️ {user.mention}, editing messages is not allowed!",
-                quote=True
-            )
-            await asyncio.sleep(10)
-            await warn.delete()
-    except Exception as e:
-        print(f"[Edit Block Handler] {e}")
+    if message.text:
+        try:
+            await message.delete()
+            user = message.from_user
+            if user:
+                warn = await message.reply_text(
+                    f"⚠️ {user.mention}, editing messages is not allowed!",
+                    quote=True
+                )
+                await asyncio.sleep(10)
+                await warn.delete()
+        except Exception as e:
+            print(f"[Edit Block Handler] {e}")
 
 # ====== Bot Start ======
 async def start_bot():
