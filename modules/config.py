@@ -17,7 +17,7 @@ URL_PATTERN = re.compile(
 
 # ====================== MongoDB Config (Render Ready) ======================
 # Sirf Cloud MongoDB use hoga, local check hata diya
-MONGO_URI = "mongodb+srv://<user>:<password>@cluster0.mongodb.net/mydatabase?retryWrites=true&w=majority"
+MONGO_URI = "mongodb+srv://<shieldx_bot>:<6gvi4XpXsO85kL0x>@cluster0.mongodb.net/mydatabase?retryWrites=true&w=majority"
 
 # Default warning & punishment config
 DEFAULT_WARNING_LIMIT = 3
