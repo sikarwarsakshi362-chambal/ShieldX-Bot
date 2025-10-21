@@ -16,7 +16,7 @@ URL_PATTERN = re.compile(
 )
 
 # ======================= MongoDB Config =======================
-MONGO_URI = "mongodb://localhost:27017/shieldx_db"
+MONGO_URI = "mongodb+srv://<user>:<password>@cluster0.mongodb.net/shieldx_db?retryWrites=true&w=majority"
 
 # Default warning & punishment config
 DEFAULT_WARNING_LIMIT = 3
