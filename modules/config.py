@@ -15,30 +15,14 @@ URL_PATTERN = re.compile(
     r"(https?://|www\.)[a-zA-Z0-9.\-]+(\.[a-zA-Z]{2,})+(/[a-zA-Z0-9._%+-]*)*"
 )
 
-# ====================== MongoDB Config (Auto Detect) ======================
-import socket
-
-LOCAL_MONGO_URI = "mongodb://localhost:27017/shieldx_db"
-CLOUD_MONGO_URI = "mongodb+srv://<user>:<password>@cluster0.mongodb.net/mydatabase?retryWrites=true&w=majority"
-
-def get_mongo_uri():
-    try:
-        # try to connect to localhost MongoDB
-        sock = socket.create_connection(("localhost", 27017), timeout=2)
-        sock.close()
-        print("✅ Using Local MongoDB (localhost:27017)")
-        return LOCAL_MONGO_URI
-    except Exception:
-        print("☁️ Local MongoDB not found, using Cloud MongoDB")
-        return CLOUD_MONGO_URI
-
-MONGO_URI = get_mongo_uri()
+# ====================== MongoDB Config (Render Ready) ======================
+# Sirf Cloud MongoDB use hoga, local check hata diya
+MONGO_URI = "mongodb+srv://<user>:<password>@cluster0.mongodb.net/mydatabase?retryWrites=true&w=majority"
 
 # Default warning & punishment config
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
 DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
-
 
 # ======================= Debug & Features =======================
 DEBUG = False  # optional, True for debug prints
