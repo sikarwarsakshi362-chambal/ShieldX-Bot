@@ -23,7 +23,7 @@ from pymongo.server_api import ServerApi
 MONGO_URI = "mongodb://shieldx_bot:shieldx_bot@mongo:27017/shieldxdb"
 
 # Create a new client and connect to the server
-client = MongoClient(uri, server_api=ServerApi('1'))
+client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
 
 # Send a ping to confirm a successful connection
 try:
@@ -31,6 +31,7 @@ try:
     print("Pinged your deployment. You successfully connected to MongoDB!")
 except Exception as e:
     print(e)
+
 
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
