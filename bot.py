@@ -2,38 +2,8 @@
 # ShieldX Protector Bot — Top Structure Strict Mode
 from pyrogram import Client, filters, errors
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions, Message
-import asyncio
-import threading
-import requests
-import socket
+import asyncio, threading, requests, socket
 from flask import Flask
-import redis
-import os
-
-# ====================== MongoDB Setup =======================
-from config import async_session, Base, DEFAULT_CONFIG, DEFAULT_PUNISHMENT, DEFAULT_WARNING_LIMIT
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Column, Integer, String, select
-
-# ====================== Redis Setup =======================
-# Fetch Redis URL from Render environment variable
-REDIS_URL = os.getenv('REDIS_URL')  # Render environment variable for Redis
-
-# Initialize Redis client
-redis_client = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
-
-# ====================== Redis Connection Test =======================
-# Test Redis connection
-try:
-    redis_client.ping()  # Ping Redis to check connection
-    print("✅ Redis connected successfully!")
-except redis.ConnectionError:
-    print("❌ Redis connection failed.")
-
-# ====================== Default Bot Config ======================
-DEFAULT_WARNING_LIMIT = 3
-DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
-DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
 
 # ====== Bot Config ======
 from helper.utils import (
@@ -44,13 +14,12 @@ from helper.utils import (
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 
 # ====== Pyrogram Client ======
-app = Client(
+app_bot = Client(
     "ShieldX-Bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
-
 
 # ====== Flask Server & Health ======
 flask_app = Flask("ShieldXBot")
