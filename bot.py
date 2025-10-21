@@ -11,10 +11,11 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermi
 import asyncio, threading, requests, socket
 from flask import Flask
 from pymongo import MongoClient
-from config import MONGO_URI
+from modules.config import MONGO_URI  # <- modules ke andar hai
 
 client = MongoClient(MONGO_URI)
 db = client["shieldx_db"]
+
 
 # ====== Bot Config ======
 from helper.utils import (
@@ -480,7 +481,9 @@ ABUSE_STATUS = {}  # chat_id: True/False
 
 def is_abuse(text: str) -> bool:
     return any(word in text.lower() for word in ABUSE_KEYWORDS)
-    
+    import sys
+from pyrogram.errors import RPCError, FloodWait, Forbidden
+
 @app.on_message(filters.group & filters.text)
 async def abuse_auto_delete(client: Client, message):
     chat_id = message.chat.id
@@ -488,9 +491,13 @@ async def abuse_auto_delete(client: Client, message):
     if not user or user.id in ABUSE_EXEMPT_IDS:
         return
 
-    # chat admin check
-    member = await client.get_chat_member(chat_id, user.id)
-    if member.status in ["administrator", "creator"]:
+    try:
+        # chat admin check
+        member = await client.get_chat_member(chat_id, user.id)
+        if member.status in ["administrator", "creator"]:
+            return
+    except RPCError as e:
+        print(f"[ABUSE Handler WARNING] Could not fetch member {user.id} in chat {chat_id}: {e}", file=sys.stderr)
         return
 
     if not ABUSE_STATUS.get(chat_id, True):
@@ -502,9 +509,9 @@ async def abuse_auto_delete(client: Client, message):
             warn = await message.reply_text(f"⚠️ {user.mention} Abusive content removed!", quote=True)
             await asyncio.sleep(5)
             await warn.delete()
-        except Exception as e:
-            # ✅ Agar delete fail ho to Render logs me error show karo
-            print(f"[ABUSE Handler ERROR] Failed to delete message from {user.id} in chat {chat_id}: {e}")
+        except (Forbidden, FloodWait, RPCError) as e:
+            # ✅ Force log to Render console on delete fail
+            print(f"[ABUSE Handler ERROR] Failed to delete message from {user.id} in chat {chat_id}: {e}", file=sys.stderr)
 
 # ======================= Disable all message edits =======================
 from pyrogram import Client
@@ -529,10 +536,10 @@ async def handle_edited_message(client: Client, message: Message):
 # ====== Bot Start ======
 async def start_bot():
     print("✅ ShieldX Bot running...")
-    asyncio.create_task(ping_render())
+    asyncio.create_task(ping_render())  # async ping function
     while True:
         try:
-            await app_bot.start()
+            await app.start()  # <- yaha app use karo, app_bot nahi
             print("✅ Pyrogram client started.")
             break
         except Exception as e:
