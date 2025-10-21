@@ -12,7 +12,6 @@ from config import (
 )
 from sqlalchemy import Column, Integer, String, select
 
-# ====================== PostgreSQL Tables (MongoDB replaced) ======================
 class Warning(Base):
     __tablename__ = "warnings"
     id = Column(Integer, primary_key=True, autoincrement=True)
