@@ -11,7 +11,7 @@ from flask import Flask
 from pymongo import MongoClient
 
 # ====== MongoDB Setup ======
-MONGO_URI = "mongodb+srv://shieldx_bot:6gvi4XpXsO85kL0x@cluster0.nlqabaj.mongodb.net/shieldx_db?retryWrites=true&w=majority"
+MONGO_URI = "mongodb+srv://shieldx_bot:jay562028jd@cluster0.nlqabaj.mongodb.net/shieldx_db?retryWrites=true&w=majority"
 client = MongoClient(MONGO_URI)
 db = client["shieldx_db"]
 
