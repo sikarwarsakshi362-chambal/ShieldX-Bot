@@ -534,20 +534,23 @@ async def handle_edited_message(client: Client, message: Message):
 async def start_bot():
     print("✅ ShieldX Bot running...")
     asyncio.create_task(ping_render())  # async ping function
+
     while True:
         try:
-            await app.start()  # <- yaha app use karo, app_bot nahi
+            await app.start()  # <- Pyrogram client
             print("✅ Pyrogram client started.")
             break
         except Exception as e:
             print(f"[Bot] Start failed: {e} | Retrying in 5s...")
             await asyncio.sleep(5)
-            
+
+    # Bot idle rakho taaki commands kaam karte rahein
+    await app.idle()
+
 if __name__ == "__main__":
     # Flask ko daemon thread me run karo
     threading.Thread(target=run_flask, daemon=True).start()
 
     # Async Pyrogram bot run karo
     asyncio.run(start_bot())
-
 
