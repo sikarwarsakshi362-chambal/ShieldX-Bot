@@ -4,6 +4,35 @@ from pyrogram import Client, filters, errors
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions, Message
 import asyncio, threading, requests, socket
 from flask import Flask
+# -*- coding: utf-8 -*-
+# ShieldX Protector Bot — Top Structure Strict Mode
+from pyrogram import Client, filters, errors
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions, Message
+import asyncio, threading, requests, socket
+from flask import Flask
+from pymongo import MongoClient
+
+MONGO_URI = "mongodb+srv://<user>:<password>@cluster0.mongodb.net/mydatabase?retryWrites=true&w=majority"
+client = MongoClient(MONGO_URI)
+db = client["mydatabase"]
+
+
+# ====== Bot Config ======
+from helper.utils import (
+    is_admin, get_config, update_config, increment_warning,
+    reset_warnings, is_allowlisted, add_allowlist,
+    remove_allowlist, get_allowlist
+)
+from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
+
+# ====== Pyrogram Client ======
+app = Client(
+    "ShieldX-Bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
+)
+
 
 # ====== Bot Config ======
 from helper.utils import (
