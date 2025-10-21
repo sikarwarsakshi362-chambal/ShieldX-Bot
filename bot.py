@@ -447,8 +447,8 @@ async def check_bio(client: Client, message):
                 return await message.reply_text(f"I don't have permission to {mode} users.")
     else:
         await reset_warnings(chat_id, user_id)
-
-        from pyrogram import Client, filters
+        
+from pyrogram import Client, filters
 from pyrogram.types import Message
 import asyncio
 
@@ -464,6 +464,8 @@ ABUSE_KEYWORDS = [w.lower() for w in ABUSE_KEYWORDS]
 
 def is_abuse(text: str) -> bool:
     return any(word in text.lower() for word in ABUSE_KEYWORDS)
+
+app = Client("my_bot")
 
 @app.on_message(filters.group & filters.text)
 async def abuse_auto_delete(client: Client, message: Message):
@@ -487,8 +489,8 @@ import asyncio
 
 @app.on_edited_message(filters.group & filters.text)
 async def handle_edited_message(client: Client, message: Message):
-    # ✅ Only delete if it's a text edit, reacts will not trigger
-    if message.text:
+    # ✅ Only delete if it's a text edit (reactions will not trigger)
+    if message.text and not message.reaction:  # Avoiding reactions or emoji responses
         try:
             await message.delete()
             user = message.from_user
