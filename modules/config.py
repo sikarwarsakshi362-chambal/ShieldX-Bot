@@ -20,7 +20,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
 # Local MongoDB URI for Render
-uri = "mongodb://shieldx_bot:shieldx_bot@localhost:27017/shieldxdb"
+MONGO_URI = "mongodb://shieldx_bot:shieldx_bot@mongo:27017/shieldxdb"
 
 # Create a new client and connect to the server
 client = MongoClient(uri, server_api=ServerApi('1'))
