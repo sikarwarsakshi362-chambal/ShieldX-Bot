@@ -515,6 +515,6 @@ if __name__ == "__main__":
     # Run Flask in daemon thread
     threading.Thread(target=run_flask, daemon=True).start()
     
-    # Run bot in asyncio loop
-    asyncio.run(start_bot())
+    # Bot start
+    app.run()  # ye hi Pyrogram ka built-in loop hai
 
