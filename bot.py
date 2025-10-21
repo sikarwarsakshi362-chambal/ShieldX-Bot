@@ -7,13 +7,26 @@ import threading
 import requests
 import socket
 from flask import Flask
-# bot.py ke top par hi
-from pymongo import MongoClient
 
-# ====== MongoDB Setup ======
-MONGO_URI = "mongodb+srv://shieldx_bot:jay562028jd@cluster0.nlqabaj.mongodb.net/shieldx_db?retryWrites=true&w=majority"
-client = MongoClient(MONGO_URI)
-db = client["shieldx_db"]
+# ====== PostgreSQL Setup (MongoDB replaced) ======
+import os
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://shieldx_bot:shieldx_bot@localhost:5432/shieldxdb")
+
+engine = create_async_engine(DATABASE_URL, echo=False)
+async_session = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+Base = declarative_base()
+
+# ====================== Default Bot Config ======================
+DEFAULT_WARNING_LIMIT = 3
+DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
+DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
 
 # ====== Bot Config ======
 from helper.utils import (
