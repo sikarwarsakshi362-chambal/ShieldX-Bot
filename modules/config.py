@@ -32,7 +32,6 @@ try:
 except Exception as e:
     print(e)
 
-MONGO_URI = "mongodb+srv://<shieldx_bot>:<6gvi4XpXsO85kL0x>@clus
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
 DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
