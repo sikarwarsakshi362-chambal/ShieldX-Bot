@@ -7,8 +7,28 @@ import threading
 import requests
 import socket
 from flask import Flask
+import redis
+import os
 
+# ====================== MongoDB Setup =======================
+from config import async_session, Base, DEFAULT_CONFIG, DEFAULT_PUNISHMENT, DEFAULT_WARNING_LIMIT
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Column, Integer, String, select
 
+# ====================== Redis Setup =======================
+# Fetch Redis URL from Render environment variable
+REDIS_URL = os.getenv('REDIS_URL')  # Render environment variable for Redis
+
+# Initialize Redis client
+redis_client = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
+
+# ====================== Redis Connection Test =======================
+# Test Redis connection
+try:
+    redis_client.ping()  # Ping Redis to check connection
+    print("✅ Redis connected successfully!")
+except redis.ConnectionError:
+    print("❌ Redis connection failed.")
 
 # ====================== Default Bot Config ======================
 DEFAULT_WARNING_LIMIT = 3
