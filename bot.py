@@ -11,11 +11,10 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermi
 import asyncio, threading, requests, socket
 from flask import Flask
 from pymongo import MongoClient
+from config import MONGO_URI
 
-MONGO_URI = "mongodb+srv://<user>:<password>@cluster0.mongodb.net/mydatabase?retryWrites=true&w=majority"
 client = MongoClient(MONGO_URI)
-db = client["mydatabase"]
-
+db = client["shieldx_db"]
 
 # ====== Bot Config ======
 from helper.utils import (
