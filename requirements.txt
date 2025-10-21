@@ -4,13 +4,8 @@ Flask==3.0.3
 python-dotenv==1.0.1
 requests==2.32.3
 aiohttp==3.10.5
-pillow==10.4.0
 nest_asyncio==1.6.0
 opencv-python==4.10.0.84
 numpy==2.1.2
-gunicorn==23.0.0
-nudenet==3.4.2
-tensorflow==2.20.0
-tensorflow_hub==0.14.0
-pyrofork==2.3.43
+gunicorn==23.0.03
 motor==3.6.0
