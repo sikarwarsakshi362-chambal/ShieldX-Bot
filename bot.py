@@ -7,10 +7,11 @@ import threading
 import requests
 import socket
 from flask import Flask
+# bot.py ke top par hi
 from pymongo import MongoClient
-from modules.config import MONGO_URI  # modules folder ke andar
 
 # ====== MongoDB Setup ======
+MONGO_URI = "mongodb+srv://shieldx_bot:6gvi4XpXsO85kL0x@cluster0.nlqabaj.mongodb.net/shieldx_db?retryWrites=true&w=majority"
 client = MongoClient(MONGO_URI)
 db = client["shieldx_db"]
 
