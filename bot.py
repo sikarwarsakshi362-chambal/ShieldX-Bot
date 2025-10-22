@@ -500,15 +500,15 @@ async def handle_edited_message(client: Client, message: Message):
             await warn.delete()
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
-
-# ====== Bot Start ======
+# ====== Bot Start (PATCH FIXED) ======
 async def start_bot():
     print("✅ ShieldX Bot running...")
     asyncio.create_task(ping_render())  # async ping function
     while True:
         try:
-            await app.start()  # <- yaha app use karo, app_bot nahi
+            await app.start()  # <- fixed: using app, infinite wait removed
             print("✅ Pyrogram client started.")
+            await asyncio.Event().wait()  # keep bot running
             break
         except Exception as e:
             print(f"[Bot] Start failed: {e} | Retrying in 5s...")
@@ -520,3 +520,4 @@ if __name__ == "__main__":
 
     # Async Pyrogram bot run karo
     asyncio.run(start_bot())
+
