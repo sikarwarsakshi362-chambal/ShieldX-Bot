@@ -449,72 +449,32 @@ async def check_bio(client: Client, message):
                 return await message.reply_text(f"I don't have permission to {mode} users.")
     else:
         await reset_warnings(chat_id, user_id)
-        
-from pyrogram import Client, filters
-from pyrogram.types import Message
+
+# ======================= Edited Messages (Safe, No Reaction Delete) =======================
 import asyncio
-# =============================== ABUSE DETECTION ===============================
-ABUSE_KEYWORDS = [
-    "chutiya","bhosdike","lund","gandu","randi","kutti","bsdk","bahanchod",
-    "kutta","madarchod","sala","harami","behenchod","jhatu","lodu","choot",
-    "mc","bc","lundu","jeeja","tharki","sex","fuck","bitch","ass","cock","dick",
-    "boobs","slut","anal","cum","naked","porn","xxx","tits","pussy","fuckme",
-    "masturbate","whore","prostitute","retard","idiot","jerk","shit","damn","crap"
-]
-ABUSE_KEYWORDS = [w.lower() for w in ABUSE_KEYWORDS]
-
-def is_abuse(text: str) -> bool:
-    return any(word in text.lower() for word in ABUSE_KEYWORDS)
-
-@app.on_message(filters.group & filters.text)
-async def abuse_auto_delete(client, message):
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-
-    # Skip admins / allowlisted users
-    if await is_admin(client, chat_id, user_id) or await is_allowlisted(chat_id, user_id):
-        return
-
-    if not message.text:
-        return
-
-    if is_abuse(message.text):
-        try:
-            await message.delete()
-        except:
-            pass  # Delete permission missing
-
-        try:
-            warn = await message.reply_text(
-                f"⚠️ {message.from_user.mention} Abusive content removed!",
-                quote=True
-            )
-            await asyncio.sleep(5)
-            await warn.delete()
-        except:
-            
-# ======================= Edited Messages (Safe) =======================
 from pyrogram.types import Message
-import asyncio
 
 @app.on_edited_message(filters.group & filters.text)
 async def handle_edited_message(client: Client, message: Message):
-    if not message.text:  # only proceed if text exists
-        return
-
     try:
+        # सिर्फ text edits delete करें
         await message.delete()
+
         user = message.from_user
-        if user:
-            warn = await message.reply_text(
-                f"⚠️ {user.mention}, editing messages is not allowed!",
-                quote=True
-            )
-            await asyncio.sleep(10)
-            await warn.delete()
+        if not user:
+            return
+
+        warn = await message.reply_text(
+            f"⚠️ {user.mention}, editing messages is not allowed!",
+            quote=True
+        )
+        await asyncio.sleep(10)
+        await warn.delete()
+
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
-        pass  # 👈 यह line जरूरी है, ताकि except खाली न रहे
+        pass
+
 
 # ====== Bot Start (PATCH FIXED) ======
 import threading
