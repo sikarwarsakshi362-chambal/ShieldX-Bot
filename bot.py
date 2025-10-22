@@ -492,22 +492,16 @@ async def abuse_auto_delete(client, message):
             await asyncio.sleep(5)
             await warn.delete()
         except:
+            
 # ======================= Edited Messages (Safe) =======================
 from pyrogram.types import Message
 import asyncio
 
-@app.on_edited_message(filters.group)
+@app.on_edited_message(filters.group & filters.text)
 async def handle_edited_message(client: Client, message: Message):
-    # 1️⃣ Ignore if message has no text (like reactions, stickers, media edits)
-    if not getattr(message, "text", None):
+    if not message.text:  # only proceed if text exists
         return
 
-    # 2️⃣ Ignore if text hasn't actually changed (Pyrogram sometimes triggers false edits)
-    old_text = getattr(message, "old_text", None)
-    if old_text is not None and old_text == message.text:
-        return
-
-    # 3️⃣ Delete edited message and warn user
     try:
         await message.delete()
         user = message.from_user
@@ -520,7 +514,8 @@ async def handle_edited_message(client: Client, message: Message):
             await warn.delete()
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
-            
+        pass  # 👈 यह line जरूरी है, ताकि except खाली न रहे
+
 # ====== Bot Start (PATCH FIXED) ======
 import threading
 
