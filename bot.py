@@ -515,12 +515,17 @@ async def start_bot():
         except Exception as e:
             print(f"[Bot] Start failed: {e} | Retrying in 5s...")
             await asyncio.sleep(5)
-
 if __name__ == "__main__":
     # Flask ko daemon thread me run karo
     threading.Thread(target=run_flask, daemon=True).start()
 
     # Async Pyrogram bot run karo
-    asyncio.run(start_bot())
+    async def main():
+        await app.start()
+        print("✅ Pyrogram bot started.")
+        asyncio.create_task(ping_render())  # async watchdog
+        await asyncio.Event().wait()  # infinite wait to keep bot running
+
+    asyncio.run(main())
 
 
