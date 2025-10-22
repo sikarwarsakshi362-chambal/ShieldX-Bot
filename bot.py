@@ -37,6 +37,7 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
+
 # ====== Flask Server & Health ======
 flask_app = Flask("ShieldXBot")
 RENDER_URL = "https://shieldx-bot-1.onrender.com"
@@ -64,16 +65,16 @@ def run_flask():
         print(f"[Flask] Error: {e} | Retrying...")
         run_flask()  # self-restart on crash
 
-# ====== Watchdog ======
-async def ping_render():
+# ====== Watchdog Ping (async, 30min DM) ======
+async def watchdog_ping(client: Client):
     while True:
         try:
             r = requests.get(RENDER_URL + "/health", timeout=5)
             print(f"[Watchdog] Render pinged | Status: {r.status_code}")
+            await client.send_message("7959353330", "⏰ ShieldX Bot is alive")
         except Exception as e:
             print(f"[Watchdog] Ping failed: {e}")
-        await asyncio.sleep(5)
-
+        await asyncio.sleep(1800)  # 30 min
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
 async def start_handler(client: Client, message):
@@ -491,16 +492,22 @@ async def abuse_auto_delete(client, message):
             await asyncio.sleep(5)
             await warn.delete()
         except:
-            pass
 # ======================= Edited Messages (Safe) =======================
 from pyrogram.types import Message
 import asyncio
-@app.on_edited_message(filters.group & filters.text)
+
+@app.on_edited_message(filters.group)
 async def handle_edited_message(client: Client, message: Message):
-    if not message.text:  # only proceed if text exists
+    # 1️⃣ Ignore if message has no text (like reactions, stickers, media edits)
+    if not getattr(message, "text", None):
         return
 
-    # delete edited message safely
+    # 2️⃣ Ignore if text hasn't actually changed (Pyrogram sometimes triggers false edits)
+    old_text = getattr(message, "old_text", None)
+    if old_text is not None and old_text == message.text:
+        return
+
+    # 3️⃣ Delete edited message and warn user
     try:
         await message.delete()
         user = message.from_user
@@ -513,7 +520,7 @@ async def handle_edited_message(client: Client, message: Message):
             await warn.delete()
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
-        
+            
 # ====== Bot Start (PATCH FIXED) ======
 import threading
 
