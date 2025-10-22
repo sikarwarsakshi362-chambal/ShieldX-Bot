@@ -1,5 +1,4 @@
-pyrofork        # Pyrogram fork
-tgcrypto        # Pyrogram crypto dependency
-motor           # Async MongoDB client
-Flask==3.0.3    # Health server
-requests==2.32.3 # Watchdog ping / HTTP requests
+pyrofork==2.3.68       # Telegram client (Pyrogram fork)
+tgcrypto==1.2.5        # Pyrogram crypto dependency
+Flask==3.0.3           # Health server for uptime check
+requests==2.32.3       # HTTP ping watchdog
