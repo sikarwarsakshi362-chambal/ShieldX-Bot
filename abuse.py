@@ -1,4 +1,4 @@
-# helper/abuse.py
+# modules/abuse.py
 # =========================
 # Abuse filter module (delete + warn only, no penalties)
 # Admins and allowlisted users are NOT bypassed
@@ -103,3 +103,4 @@ def remove_abusive_word(word: str):
 def _recompile():
     global ABUSE_RE
     ABUSE_RE = re.compile(r"\b(" + "|".join(re.escape(w) for w in ABUSIVE_WORDS) + r")\b", flags=re.IGNORECASE)
+
