@@ -1,5 +1,8 @@
-pyrofork==2.3.68       # Telegram client (Pyrogram fork)
-tgcrypto==1.2.5        # Pyrogram crypto dependency
-Flask==3.0.3           # Health server for uptime check
-requests==2.32.3       # HTTP ping watchdog
-uvicorn==0.25.0
+pyrogram==2.3.68
+tgcrypto==1.2.5
+requests==2.32.3
+Flask==3.0.3
+gunicorn==20.1.0
+pymediainfo-pyrofork==6.0.2
+pyrofork==2.3.68
+PySocks==1.7.1
