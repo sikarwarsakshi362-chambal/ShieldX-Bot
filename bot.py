@@ -7,6 +7,7 @@ import os
 from pyrogram import Client
 from flask import Flask, request
 import asyncio
+import telegram
 from abuse import abuse_check_handler
 
 
