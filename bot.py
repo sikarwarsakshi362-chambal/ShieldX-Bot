@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# ShieldX Protector Bot — Top Structure (Strict Mode Ready)
+# ShieldX Protector Bot — JSON Fix (Original Imports Retained)
 
 from pyrogram import Client, filters, errors, enums
 from pyrogram.types import (
@@ -37,6 +37,16 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
+# ====== Example JSON Usage ======
+@app.on_message()
+async def example_json_usage(client, message: Message):
+    if not await is_allowlisted(message.chat.id, message.from_user.id):
+        count = await increment_warning(message.chat.id, message.from_user.id)
+        mode, limit, penalty = await get_config(message.chat.id)
+        if count >= limit:
+            await reset_warnings(message.chat.id, message.from_user.id)
+
+app.run()
 
 # ====== Flask Server & Health ======
 flask_app = Flask("ShieldXBot")
@@ -450,16 +460,13 @@ async def check_bio(client: Client, message):
     else:
         await reset_warnings(chat_id, user_id)
 
-# ======================= Edited Messages (Safe, No Reaction Delete) =======================
-import asyncio
-from pyrogram.types import Message
-
-@app.on_edited_message(filters.group & filters.text)
+@app.on_edited_message(filters.group)
 async def handle_edited_message(client: Client, message: Message):
-    try:
-        # सिर्फ text edits delete करें
-        await message.delete()
+    if not message.text:  # non-text edits skip
+        return
 
+    try:
+        await message.delete()
         user = message.from_user
         if not user:
             return
@@ -474,7 +481,6 @@ async def handle_edited_message(client: Client, message: Message):
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
         pass
-
 
 # ====== Bot Start (PATCH FIXED) ======
 import threading
