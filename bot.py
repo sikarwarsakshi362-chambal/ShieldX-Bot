@@ -452,7 +452,7 @@ ABUSE_KEYWORDS = [w.lower() for w in ABUSE_KEYWORDS]
 def is_abuse(text: str) -> bool:
     return any(word in text.lower() for word in ABUSE_KEYWORDS)
 
-@app_bot.on_message(filters.group & filters.text)
+@app.on_message(filters.group & filters.text)
 async def abuse_auto_delete(client, message):
     user_id = message.from_user.id
     chat_id = message.chat.id
@@ -482,7 +482,7 @@ async def abuse_auto_delete(client, message):
 # ======================= Edited Messages (Safe) =======================
 from pyrogram.types import Message
 import asyncio
-@app_bot.on_edited_message(filters.group & filters.text)
+@app.on_edited_message(filters.group & filters.text)
 async def handle_edited_message(client: Client, message: Message):
     if not message.text:  # only proceed if text exists
         return
