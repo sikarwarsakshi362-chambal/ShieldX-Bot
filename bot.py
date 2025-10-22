@@ -92,9 +92,6 @@ async def start_bot():
 threading.Thread(target=run_flask, daemon=True).start()
 print(f"✅ Flask server running on port {PORT}")
 
-# Run the Pyrogram Client using the existing event loop from Gunicorn
-app.run()
-
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
 async def start_handler(client: Client, message):
