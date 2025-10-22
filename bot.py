@@ -489,36 +489,64 @@ async def check_bio(client: Client, message):
     else:
         await reset_warnings(chat_id, user_id)
 
+# =========================
+# Edited Message Block Handler
+# Blocks text edits in groups
+# Ignores emoji reactions, media edits, and service messages
+# Integrated with warning system
+# =========================
+
+from pyrogram import Client, filters
+from pyrogram.types import Message
+import asyncio
+
 @app.on_edited_message(filters.group)
 async def handle_edited_message(client: Client, message: Message):
-    if not message.text:  # non-text edits skip
+    # 1️⃣ Ignore non-text edits (stickers, media, reactions)
+    if not message.text or message.text == "":
+        return
+
+    # 2️⃣ Ignore service messages (like join/leave, pinned, reactions)
+    if message.service:
         return
 
     try:
-        await message.delete()
         user = message.from_user
         if not user:
             return
 
+        # Delete the edited message
+        await message.delete()
+
+        # Send warning to the user
         warn = await message.reply_text(
             f"⚠️ {user.mention}, editing messages is not allowed!",
             quote=True
         )
+
+        # Auto-delete warning after 10 seconds
         await asyncio.sleep(10)
         await warn.delete()
 
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
-        pass
 
-# ====== Bot Start (PATCH FIXED) ======
 import threading
+import asyncio
 
-if __name__ == "__main__":
-    # Flask health server background me run
-    threading.Thread(target=run_flask, daemon=True).start()
+# ====== Flask Health Server ======
+threading.Thread(target=run_flask, daemon=True).start()
+print("✅ Flask server running in background")
 
-    # Pyrogram bot start (original synchronous way)
-    print("✅ ShieldX Bot running...")
-    app.run()  # simple, no async, fully responsive
+# ====== Watchdog Ping ======
+async def start_watchdog():
+    await watchdog_ping(app)
+
+# Create background asyncio task for watchdog
+loop = asyncio.get_event_loop()
+loop.create_task(start_watchdog())
+
+# ====== Start Bot ======
+print("✅ ShieldX Bot running...")
+app.run()  # synchronous, bot events fully responsive
 
