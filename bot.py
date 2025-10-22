@@ -509,10 +509,10 @@ if __name__ == "__main__":
     # Flask server background me run
     threading.Thread(target=run_flask, daemon=True).start()
 
-    # Pyrogram bot start
-    app.start()
-    print("✅ ShieldX Bot running...")
+    # Pyrogram bot async start
+    async def main():
+        await app.start()  # start bot
+        print("✅ ShieldX Bot running...")
+        await asyncio.Event().wait()  # keep bot alive for commands
 
-    # Keep bot alive for commands
-    asyncio.get_event_loop().run_until_complete(app.idle())
-
+    asyncio.run(main())
