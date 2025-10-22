@@ -503,16 +503,12 @@ async def handle_edited_message(client: Client, message: Message):
         
 # ====== Bot Start (PATCH FIXED) ======
 import threading
-import asyncio
 
 if __name__ == "__main__":
-    # Flask server background me run
+    # Flask health server background me run
     threading.Thread(target=run_flask, daemon=True).start()
 
-    # Pyrogram bot async start
-    async def main():
-        await app.start()  # start bot
-        print("✅ ShieldX Bot running...")
-        await asyncio.Event().wait()  # keep bot alive for commands
+    # Pyrogram bot start (original synchronous way)
+    print("✅ ShieldX Bot running...")
+    app.run()  # simple, no async, fully responsive
 
-    asyncio.run(main())
