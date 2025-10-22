@@ -3,7 +3,7 @@
 import threading
 import requests
 import os
-from pyrogram import Client
+from pyrogram import Client, filters  # Import 'filters' here
 from flask import Flask, request
 import telegram
 import asyncio
@@ -65,10 +65,6 @@ def webhook():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=PORT)
 
-# ====== Start Flask in background thread ======
-threading.Thread(target=run_flask, daemon=True).start()
-print(f"✅ Flask server running on port {PORT}")
-
 # ====== Watchdog Task ======
 async def watchdog(client: Client, user_id: int):
     while True:
@@ -92,9 +88,12 @@ async def start_bot():
     # Schedule the watchdog task
     asyncio.create_task(watchdog(app, OWNER_ID))
 
-# Running the start function
-asyncio.run(start_bot())
+# ====== Start Flask in background thread ======
+threading.Thread(target=run_flask, daemon=True).start()
+print(f"✅ Flask server running on port {PORT}")
 
+# Run the Pyrogram Client using the existing event loop from Gunicorn
+app.run()
 
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
@@ -110,7 +109,7 @@ async def start_handler(client: Client, message):
         f"✨ **Welcome, {user}!** ✨\n\n"
         "I'm 🛡️ **ShieldX Protector** 🤖 Bot — your all-in-one AI Group Security system.\n\n"
         "🔹 **Key Protections:**\n"
-       "   ✨🛡️ **Bio Shield:** Automatically scans & removes any links from user bios 🔗\n"
+        "   ✨🛡️ **Bio Shield:** Automatically scans & removes any links from user bios 🔗\n"
         "   • Auto-deletes edited or spam messages 🧹\n"
         "   • Smart abuse filter with auto delete ⚔️\n"
         "   • Custom warning limits with punishments 🚨\n"
@@ -119,16 +118,16 @@ async def start_handler(client: Client, message):
         "🛡️ Stay safe — ShieldX is watching everything 👁️"
     )
 
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Add Me to Your Group", url=add_url)],
+    kb = telegram.InlineKeyboardMarkup([
+        [telegram.InlineKeyboardButton("➕ Add Me to Your Group", url=add_url)],
         [
-            InlineKeyboardButton("🛠️ Support", url="https://t.me/FakeSupportX"),
-            InlineKeyboardButton("🗑️ Delete", callback_data="delete")
+            telegram.InlineKeyboardButton("🛠️ Support", url="https://t.me/FakeSupportX"),
+            telegram.InlineKeyboardButton("🗑️ Delete", callback_data="delete")
         ]
     ])
 
     await client.send_message(chat_id, text, reply_markup=kb)
-
+    
 @app.on_message(filters.command("help"))
 async def help_handler(client: Client, message):
     chat_id = message.chat.id
