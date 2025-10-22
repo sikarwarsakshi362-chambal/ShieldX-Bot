@@ -16,7 +16,13 @@ DATA_FILE = "data.json"
 # ======================= Default Config =======================
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
-DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
+
+# Original tuple ko dictionary se replace kar diya
+DEFAULT_CONFIG = {
+    "warn_type": "warn",
+    "warning_limit": DEFAULT_WARNING_LIMIT,
+    "punishment": DEFAULT_PUNISHMENT
+}
 
 # ======================= Regex Pattern =======================
 URL_PATTERN = re.compile(
