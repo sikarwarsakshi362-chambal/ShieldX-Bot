@@ -507,7 +507,7 @@ async def start_bot():
 
     while True:
         try:
-            await app.start()  # <- Pyrogram client
+            await app_bot.start()  # <- Pyrogram client
             print("✅ Pyrogram client started.")
             break
         except Exception as e:
@@ -515,7 +515,7 @@ async def start_bot():
             await asyncio.sleep(5)
 
     # Bot idle rakho taaki commands kaam karte rahein
-    await app.idle()
+    await app_bot.idle()
 
 if __name__ == "__main__":
     # Flask ko daemon thread me run karo
