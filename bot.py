@@ -8,6 +8,8 @@ from pyrogram import Client
 from flask import Flask, request
 import telegram
 import asyncio
+from abuse import abuse_check_handler
+
 
 # ====== Bot Config & Helpers ======
 from helper.utils import (
@@ -36,6 +38,10 @@ app = Client(
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
+
+@app.on_message()
+async def global_message_handler(client, message):
+    await abuse_check_handler(client, message)
 
 # ====== Telegram Bot for Webhook ======
 bot = telegram.Bot(token=BOT_TOKEN)
@@ -130,7 +136,7 @@ async def help_handler(client: Client, message):
         "**🛡️ Keep your group safe & clean with ShieldX Protector!**"
     )
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🗑️ ", callback_data="Delete")]
+        [InlineKeyboardButton("🗑️Delete ", callback_data="Delete")]
     ])
     await client.send_message(chat_id, help_text, reply_markup=kb)
 
@@ -179,7 +185,7 @@ async def command_allow(client: Client, message):
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("🚫 Unallowlist", callback_data=f"unallowlist_{target.id}"),
-            InlineKeyboardButton("🗑️ Close", callback_data="Delete")
+            InlineKeyboardButton("🗑️ Delete", callback_data="Delete")
         ]
     ])
     await client.send_message(chat_id, text, reply_markup=keyboard)
