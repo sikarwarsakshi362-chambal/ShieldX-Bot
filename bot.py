@@ -468,41 +468,6 @@ async def check_bio(client: Client, message):
         await reset_warnings(chat_id, user_id)
 
 # =========================
-# Edited Message Block Handler
-# Blocks text edits in groups
-# Ignores emoji reactions, media edits, and service messages
-# Integrated with warning system
-# =========================
-@app.on_edited_message(filters.group)
-async def handle_edited_message(client: Client, message: Message):
-    # Ignore if no text
-    if not message.text or message.text.strip() == "":
-        return
-
-    # Ignore reactions / service messages
-    if getattr(message, "via_bot_id", None) is not None or message.service:
-        return
-
-    try:
-        user = message.from_user
-        if not user:
-            return
-
-        # Delete the edited message
-        await message.delete()
-
-        # Optional: send a simple warning message
-        warn = await message.reply_text(
-            f"⚠️ {user.mention}, editing messages is not allowed!",
-            quote=True
-        )
-        await asyncio.sleep(10)
-        await warn.delete()
-
-    except Exception as e:
-        print(f"[Edit Block Handler] {e}")
-
-# =========================
 # Full GC Activity Logger (All Chats)
 # Tracks messages, edits, deletions, join/leave
 # Sends logs to BOT_LOG_ID
