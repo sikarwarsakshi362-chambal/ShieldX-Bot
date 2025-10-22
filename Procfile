@@ -1,1 +1,1 @@
-worker: guricorn bot:app
+worker: gunicorn bot:flask_app --preload
