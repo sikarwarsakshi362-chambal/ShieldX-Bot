@@ -1,0 +1,71 @@
+import json
+from pathlib import Path
+import asyncio
+from asyncio import Lock
+
+class AsyncJSONStorage:
+    def __init__(self, file_name="data.json"):
+        self.file_path = Path(file_name)
+        self.lock = Lock()
+        if not self.file_path.exists():
+            self._write_sync({})
+
+    # Sync write for init
+    def _write_sync(self, data):
+        with open(self.file_path, "w") as f:
+            json.dump(data, f, indent=4)
+
+    async def _read(self):
+        async with self.lock:
+            try:
+                with open(self.file_path, "r") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                return {}
+
+    async def _write(self, data):
+        async with self.lock:
+            with open(self.file_path, "w") as f:
+                json.dump(data, f, indent=4)
+
+    async def set(self, key, value):
+        data = await self._read()
+        data[str(key)] = value
+        await self._write(data)
+
+    async def get(self, key, default=None):
+        data = await self._read()
+        return data.get(str(key), default)
+
+    async def delete(self, key):
+        data = await self._read()
+        if str(key) in data:
+            data.pop(str(key))
+            await self._write(data)
+
+    async def all(self):
+        return await self._read()
+
+# =========================
+# Example usage in bot.py
+# =========================
+if __name__ == "__main__":
+    import asyncio
+
+    async def test_storage():
+        store = AsyncJSONStorage("mybotdata.json")
+
+        # Set / update
+        await store.set("user_1", {"name": "Jayendra", "score": 100})
+        await store.set("user_2", {"name": "Nikki", "score": 200})
+
+        # Get
+        print(await store.get("user_1"))
+
+        # Delete
+        await store.delete("user_1")
+
+        # Show all data
+        print(await store.all())
+
+    asyncio.run(test_storage())
