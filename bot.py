@@ -2,9 +2,11 @@
 # ShieldX Protector Bot — Top Structure Strict Mode
 from pyrogram import Client, filters, errors
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions, Message
-import asyncio, threading, requests, socket
+import asyncio
+import threading
+import requests
+import socket
 from flask import Flask
-
 # ====== Bot Config ======
 from helper.utils import (
     is_admin, get_config, update_config, increment_warning,
@@ -60,8 +62,6 @@ async def ping_render():
         await asyncio.sleep(5)
 
 # ====== TOP PATCH END ======
-
-
 @app.on_message(filters.command("start"))
 async def start_handler(client: Client, message):
     chat_id = message.chat.id
@@ -75,7 +75,7 @@ async def start_handler(client: Client, message):
         f"✨ **Welcome, {user}!** ✨\n\n"
         "I'm 🛡️ **ShieldX Protector** 🤖 Bot — your all-in-one AI Group Security system.\n\n"
         "🔹 **Key Protections:**\n"
-       "   ✨🛡️ **Bio Shield:** Automatically scans & removes any links from user bios 🔗\n"
+        "   ✨🛡️ **Bio Shield:** Automatically scans & removes any links from user bios 🔗\n"
         "   • Auto-deletes edited or spam messages 🧹\n"
         "   • Smart abuse filter with auto delete ⚔️\n"
         "   • Custom warning limits with punishments 🚨\n"
@@ -93,8 +93,6 @@ async def start_handler(client: Client, message):
     ])
 
     await client.send_message(chat_id, text, reply_markup=kb)
-
-    
 
 @app.on_message(filters.command("help"))
 async def help_handler(client: Client, message):
