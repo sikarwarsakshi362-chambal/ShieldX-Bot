@@ -1,83 +1,102 @@
-from pyrogram import Client, enums, filters
-from motor.motor_asyncio import AsyncIOMotorClient
-from config import MONGO_URI, DEFAULT_CONFIG, DEFAULT_PUNISHMENT, DEFAULT_WARNING_LIMIT
+import json
+import os
+from pyrogram import Client, enums
+from config import DEFAULT_CONFIG, DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT
 
-# MongoDB client
-mongo_client = AsyncIOMotorClient(MONGO_URI)
-db = mongo_client['telegram_bot_db']
+# JSON data file path
+DATA_FILE = "data.json"
 
-warnings_collection = db['warnings']
-punishments_collection = db['punishments']
-allowlists_collection = db['whitelists']  # allowlist collection
+# ========== Strict Mode JSON Helper ==========
+def load_data():
+    """Load JSON data safely."""
+    if not os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "w") as f:
+            json.dump({"warnings": {}, "punishments": {}, "allowlists": {}}, f)
+    try:
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        print("❌ JSON corrupt — resetting to default (strict mode).")
+        data = {"warnings": {}, "punishments": {}, "allowlists": {}}
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f)
+        return data
 
+def save_data(data):
+    """Save data safely with overwrite (strict mode)."""
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+# ========== Bot Utility Functions ==========
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
     async for member in client.get_chat_members(
-        chat_id,
-        filter=enums.ChatMembersFilter.ADMINISTRATORS
+        chat_id, filter=enums.ChatMembersFilter.ADMINISTRATORS
     ):
         if member.user.id == user_id:
             return True
     return False
 
+# ==================== CONFIG ====================
 async def get_config(chat_id: int):
-    doc = await punishments_collection.find_one({'chat_id': chat_id})
-    if doc:
-        return doc.get('mode', 'warn'), doc.get('limit', DEFAULT_WARNING_LIMIT), doc.get('penalty', DEFAULT_PUNISHMENT)
+    data = load_data()
+    cfg = data["punishments"].get(str(chat_id))
+    if cfg:
+        return cfg.get("mode", "warn"), cfg.get("limit", DEFAULT_WARNING_LIMIT), cfg.get("penalty", DEFAULT_PUNISHMENT)
     return DEFAULT_CONFIG
 
 async def update_config(chat_id: int, mode=None, limit=None, penalty=None):
-    update = {}
+    data = load_data()
+    chat_id = str(chat_id)
+    update = data["punishments"].get(chat_id, {})
     if mode is not None:
-        update['mode'] = mode
+        update["mode"] = mode
     if limit is not None:
-        update['limit'] = limit
+        update["limit"] = limit
     if penalty is not None:
-        update['penalty'] = penalty
-    if update:
-        await punishments_collection.update_one(
-            {'chat_id': chat_id},
-            {'$set': update},
-            upsert=True
-        )
+        update["penalty"] = penalty
+    data["punishments"][chat_id] = update
+    save_data(data)
 
+# ==================== WARNINGS ====================
 async def increment_warning(chat_id: int, user_id: int) -> int:
-    await warnings_collection.update_one(
-        {'chat_id': chat_id, 'user_id': user_id},
-        {'$inc': {'count': 1}},
-        upsert=True
-    )
-    doc = await warnings_collection.find_one({'chat_id': chat_id, 'user_id': user_id})
-    return doc['count']
+    data = load_data()
+    chat_id = str(chat_id)
+    user_id = str(user_id)
+    data.setdefault("warnings", {}).setdefault(chat_id, {}).setdefault(user_id, {"count": 0})
+    data["warnings"][chat_id][user_id]["count"] += 1
+    count = data["warnings"][chat_id][user_id]["count"]
+    save_data(data)
+    return count
 
 async def reset_warnings(chat_id: int, user_id: int):
-    await warnings_collection.delete_one({'chat_id': chat_id, 'user_id': user_id})
+    data = load_data()
+    chat_id, user_id = str(chat_id), str(user_id)
+    if chat_id in data["warnings"] and user_id in data["warnings"][chat_id]:
+        del data["warnings"][chat_id][user_id]
+    save_data(data)
 
-# ================ Allowlist functions ================
+# ==================== ALLOWLIST ====================
 async def is_allowlisted(chat_id: int, user_id: int) -> bool:
-    doc = await allowlists_collection.find_one({'chat_id': chat_id, 'user_id': user_id})
-    return bool(doc)
+    data = load_data()
+    return str(user_id) in data["allowlists"].get(str(chat_id), [])
 
 async def add_allowlist(chat_id: int, user_id: int):
-    await allowlists_collection.update_one(
-        {'chat_id': chat_id, 'user_id': user_id},
-        {'$set': {'user_id': user_id}},
-        upsert=True
-    )
+    data = load_data()
+    chat_id = str(chat_id)
+    data["allowlists"].setdefault(chat_id, [])
+    if str(user_id) not in data["allowlists"][chat_id]:
+        data["allowlists"][chat_id].append(str(user_id))
+    save_data(data)
 
 async def remove_allowlist(chat_id: int, user_id: int):
-    await allowlists_collection.delete_one({'chat_id': chat_id, 'user_id': user_id})
+    data = load_data()
+    chat_id = str(chat_id)
+    if chat_id in data["allowlists"]:
+        data["allowlists"][chat_id] = [
+            uid for uid in data["allowlists"][chat_id] if uid != str(user_id)
+        ]
+    save_data(data)
 
 async def get_allowlist(chat_id: int) -> list:
-    cursor = allowlists_collection.find({'chat_id': chat_id})
-    docs = await cursor.to_list(length=None)
-    return [doc['user_id'] for doc in docs]
-
-# Default settings for new chats (used by abuse/bio/nsfw modules)
-def get_default_settings():
-    return {
-        "abuse_on": True,
-        "nsfw_on": True,
-        "bio_link_on": True,
-        "clean_on": False,
-        "delete_minutes": 30
-    }
+    data = load_data()
+    return data["allowlists"].get(str(chat_id), [])
