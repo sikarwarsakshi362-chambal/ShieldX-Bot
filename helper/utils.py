@@ -42,16 +42,16 @@ async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
 async def get_config(chat_id: int):
     data = load_data()
     cfg = data["punishments"].get(str(chat_id), {})
-    mode = cfg.get("mode", DEFAULT_CONFIG.get("mode", "warn"))
-    limit = cfg.get("limit", DEFAULT_CONFIG.get("limit", DEFAULT_WARNING_LIMIT))
-    penalty = cfg.get("penalty", DEFAULT_CONFIG.get("penalty", DEFAULT_PUNISHMENT))
+    # Updated keys to match new DEFAULT_CONFIG
+    mode = cfg.get("mode", DEFAULT_CONFIG.get("warn_type", "warn"))
+    limit = cfg.get("limit", DEFAULT_CONFIG.get("warning_limit", DEFAULT_WARNING_LIMIT))
+    penalty = cfg.get("penalty", DEFAULT_CONFIG.get("punishment", DEFAULT_PUNISHMENT))
     return mode, limit, penalty
 
 async def update_config(chat_id: int, mode=None, limit=None, penalty=None):
     data = load_data()
     chat_id = str(chat_id)
-    if chat_id not in data["punishments"]:
-        data["punishments"][chat_id] = {}
+    data.setdefault("punishments", {}).setdefault(chat_id, {})
     if mode is not None:
         data["punishments"][chat_id]["mode"] = mode
     if limit is not None:
