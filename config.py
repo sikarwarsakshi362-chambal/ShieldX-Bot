@@ -7,9 +7,13 @@ BOT_TOKEN = "7981496411:AAHSjcC62nEmpkA2xXMUT4Tl1X3_9xFtZDE"
 ADD_TO_GROUP_USERNAME = "shieldprotector_bot"
 SUPPORT_LINK = "https://t.me/+yGiJaSdHDoRlN2Zl"
 SESSION_FILE = "ShieldX.session"
-
+import os
+import motor.motor_asyncio
 # MongoDB connection URI
-MONGO_URI = ""
+mongo_url = os.environ.get("MONGO_URI")
+client = motor.motor_asyncio.AsyncIOMotorClient(mongo_url)
+db = client["mydb"]
+print("✅ Connected to MongoDB"
 
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute" # Options: "mute", "ban"
