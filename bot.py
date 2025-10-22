@@ -77,6 +77,15 @@ async def example_json_usage(client, message: Message):
         else:
             await message.reply_text(f"⚠️ Warning {count}/{limit} for breaking rules.")
 
+from modules.abuse import abuse_check_handler
+@app.on_message(filters.group & (filters.text | filters.caption))
+async def _abuse_bridge(client, message):
+    await abuse_check_handler(client, message)
+
+@app.on_edited_message(filters.group & (filters.text | filters.caption))
+async def _abuse_edited_bridge(client, message):
+    await abuse_check_handler(client, message)
+
 # ====== Flask Server & Health ======
 flask_app = Flask("ShieldXBot")
 RENDER_URL = "https://shieldx-bot-1.onrender.com"
