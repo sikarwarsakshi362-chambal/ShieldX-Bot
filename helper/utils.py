@@ -1,18 +1,13 @@
-import sys, os
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "modules"))
-
-from pyrogram import Client, enums, filters
 from motor.motor_asyncio import AsyncIOMotorClient
-from config import (
-    MONGO_URI,
-    DEFAULT_CONFIG,
-    DEFAULT_PUNISHMENT,
-    DEFAULT_WARNING_LIMIT
-)
+from config import MONGO_URI, DEFAULT_CONFIG, DEFAULT_PUNISHMENT, DEFAULT_WARNING_LIMIT
 
-# ✅ Use consistent Mongo variable
+# MongoDB client
 mongo_client = AsyncIOMotorClient(MONGO_URI)
 db = mongo_client['telegram_bot_db']
+
+warnings_collection = db['warnings']
+punishments_collection = db['punishments']
+allowlists_collection = db['whitelists']  # allowlist collection
 
 warnings_collection = db['warnings']
 punishments_collection = db['punishments']
