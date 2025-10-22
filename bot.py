@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# ShieldX Protector Bot — JSON Fix (Original Imports Retained)
+# ShieldX Protector Bot — JSON Fix (Ready-to-Use)
 
 from pyrogram import Client, filters, errors, enums
 from pyrogram.types import (
@@ -40,13 +40,42 @@ app = Client(
 # ====== Example JSON Usage ======
 @app.on_message()
 async def example_json_usage(client, message: Message):
-    if not await is_allowlisted(message.chat.id, message.from_user.id):
-        count = await increment_warning(message.chat.id, message.from_user.id)
-        mode, limit, penalty = await get_config(message.chat.id)
-        if count >= limit:
-            await reset_warnings(message.chat.id, message.from_user.id)
+    # Ignore bots
+    if message.from_user is None or message.from_user.is_bot:
+        return
 
-app.run()
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+
+    # Check if user is allowlisted
+    if not await is_allowlisted(chat_id, user_id):
+        # Increment warning count
+        count = await increment_warning(chat_id, user_id)
+        
+        # Get chat-specific config
+        mode, limit, penalty = await get_config(chat_id)
+        
+        # Example action based on warnings
+        if count >= limit:
+            await reset_warnings(chat_id, user_id)
+            if penalty == "mute":
+                try:
+                    await client.restrict_chat_member(
+                        chat_id,
+                        user_id,
+                        ChatPermissions(can_send_messages=False)
+                    )
+                    await message.reply_text(f"⚠️ User muted for exceeding {limit} warnings.")
+                except errors.ChatAdminRequired:
+                    await message.reply_text("❌ I need admin rights to mute members.")
+            elif penalty == "ban":
+                try:
+                    await client.kick_chat_member(chat_id, user_id)
+                    await message.reply_text(f"⛔ User banned for exceeding {limit} warnings.")
+                except errors.ChatAdminRequired:
+                    await message.reply_text("❌ I need admin rights to ban members.")
+        else:
+            await message.reply_text(f"⚠️ Warning {count}/{limit} for breaking rules.")
 
 # ====== Flask Server & Health ======
 flask_app = Flask("ShieldXBot")
