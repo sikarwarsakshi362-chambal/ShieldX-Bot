@@ -1,71 +1,58 @@
 import json
-from pathlib import Path
-import asyncio
-from asyncio import Lock
+import os
 
-class AsyncJSONStorage:
-    def __init__(self, file_name="data.json"):
-        self.file_path = Path(file_name)
-        self.lock = Lock()
-        if not self.file_path.exists():
-            self._write_sync({})
+# JSON data file path
+DATA_FILE = "data.json"
 
-    # Sync write for init
-    def _write_sync(self, data):
-        with open(self.file_path, "w") as f:
-            json.dump(data, f, indent=4)
+# Default structure
+DEFAULT_DATA = {
+    "warnings": {},        # user_id: warning_count
+    "punishments": {},     # user_id: punishment_type
+    "settings": {
+        "strict_mode": True,
+        "warning_limit": 3,
+        "default_punishment": "kick"  # kick, ban, mute
+    }
+}
 
-    async def _read(self):
-        async with self.lock:
+# Load or initialize JSON data
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "w") as f:
+            json.dump(DEFAULT_DATA, f, indent=4)
+        return DEFAULT_DATA
+    else:
+        with open(DATA_FILE, "r") as f:
             try:
-                with open(self.file_path, "r") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, FileNotFoundError):
-                return {}
+                return json.load(f)
+            except json.JSONDecodeError:
+                # corrupted file reset
+                with open(DATA_FILE, "w") as fw:
+                    json.dump(DEFAULT_DATA, fw, indent=4)
+                return DEFAULT_DATA
 
-    async def _write(self, data):
-        async with self.lock:
-            with open(self.file_path, "w") as f:
-                json.dump(data, f, indent=4)
+# Save JSON data
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
-    async def set(self, key, value):
-        data = await self._read()
-        data[str(key)] = value
-        await self._write(data)
+# Example: add warning
+def add_warning(user_id):
+    data = load_data()
+    if str(user_id) not in data["warnings"]:
+        data["warnings"][str(user_id)] = 0
+    data["warnings"][str(user_id)] += 1
 
-    async def get(self, key, default=None):
-        data = await self._read()
-        return data.get(str(key), default)
+    # Check punishment
+    if data["warnings"][str(user_id)] >= data["settings"]["warning_limit"]:
+        data["punishments"][str(user_id)] = data["settings"]["default_punishment"]
+        data["warnings"][str(user_id)] = 0  # reset after punishment
 
-    async def delete(self, key):
-        data = await self._read()
-        if str(key) in data:
-            data.pop(str(key))
-            await self._write(data)
+    save_data(data)
+    return data["warnings"][str(user_id)], data.get("punishments", {}).get(str(user_id), None)
 
-    async def all(self):
-        return await self._read()
-
-# =========================
-# Example usage in bot.py
-# =========================
+# Example usage
 if __name__ == "__main__":
-    import asyncio
-
-    async def test_storage():
-        store = AsyncJSONStorage("mybotdata.json")
-
-        # Set / update
-        await store.set("user_1", {"name": "Jayendra", "score": 100})
-        await store.set("user_2", {"name": "Nikki", "score": 200})
-
-        # Get
-        print(await store.get("user_1"))
-
-        # Delete
-        await store.delete("user_1")
-
-        # Show all data
-        print(await store.all())
-
-    asyncio.run(test_storage())
+    user_id = 123456789
+    warnings, punishment = add_warning(user_id)
+    print(f"User {user_id} warnings: {warnings}, punishment: {punishment}")
