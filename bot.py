@@ -417,18 +417,15 @@ async def check_bio(client: Client, message):
 # Ignores emoji reactions, media edits, and service messages
 # Integrated with warning system
 # =========================
-
-from pyrogram import Client, filters
-from pyrogram.types import Message
-import asyncio
-
 @app.on_edited_message(filters.group)
 async def handle_edited_message(client: Client, message: Message):
-    # 1️⃣ Ignore non-text edits (stickers, media, reactions)
-    if not message.text or message.text == "":
+    # Ignore if no text
+    if not message.text or message.text.strip() == "":
         return
 
-    # 2️⃣ Ignore service messages (like join/leave, pinned, reactions)
+    # Ignore reactions / service messages
+    if getattr(message, "via_bot_id", None) is not None:
+        return
     if message.service:
         return
 
@@ -437,75 +434,50 @@ async def handle_edited_message(client: Client, message: Message):
         if not user:
             return
 
-        # Delete the edited message
         await message.delete()
-
-        # Send warning to the user
         warn = await message.reply_text(
             f"⚠️ {user.mention}, editing messages is not allowed!",
             quote=True
         )
-
-        # Auto-delete warning after 10 seconds
         await asyncio.sleep(10)
         await warn.delete()
 
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
 
-import threading
-import asyncio
+import threading, asyncio, requests, os, socket
+from pyrogram import Client
+from flask import Flask
 
-# ====== Flask Server & Health ======
+# --- Flask ---
 flask_app = Flask("ShieldXBot")
-RENDER_URL = "https://shieldx-bot-1.onrender.com"
+RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://your-render-url.com")
 
 @flask_app.route("/health")
 def health():
-    return "ShieldX Bot is running ✅"
-
-def find_free_port(start_port=8080, max_port=8090):
-    for port in range(start_port, max_port + 1):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind(("0.0.0.0", port))
-                return port
-            except OSError:
-                continue
-    return 8080  # fallback
+    return "✅ Bot running"
 
 def run_flask():
-    port = find_free_port()
-    print(f"✅ Flask server starting on port {port} (/health)")
-    try:
-        flask_app.run(host="0.0.0.0", port=port)
-    except Exception as e:
-        print(f"[Flask] Error: {e} | Retrying...")
-        run_flask()  # self-restart on crash
+    port = int(os.environ.get("PORT", 8080))
+    flask_app.run(host="0.0.0.0", port=port)
 
-# ====== Watchdog Ping (async, 30min DM) ======
-async def watchdog_ping(client: Client):
+threading.Thread(target=run_flask, daemon=True).start()
+
+# --- Watchdog ---
+async def watchdog():
     while True:
         try:
-            r = requests.get(RENDER_URL + "/health", timeout=5)
-            print(f"[Watchdog] Render pinged | Status: {r.status_code}")
-            await client.send_message("7959353330", "⏰ ShieldX Bot is alive")
-        except Exception as e:
-            print(f"[Watchdog] Ping failed: {e}")
-        await asyncio.sleep(1800)  # 30 min
+            requests.get(f"{RENDER_URL}/health", timeout=5)
+            await app.send_message("YOUR_USER_ID", "⏰ Bot alive")
+        except:
+            pass
+        await asyncio.sleep(1800)
 
-# ====== Watchdog Ping ======
-async def start_watchdog():
-    await watchdog_ping(app)
+# --- Start bot ---
+async def main():
+    async with app:
+        asyncio.create_task(watchdog())
+        await app.idle()
 
-# Create background asyncio task for watchdog
-loop = asyncio.get_event_loop()
-loop.create_task(start_watchdog())
-
-# ====== Flask Health Server ======
-threading.Thread(target=run_flask, daemon=True).start()
-print("✅ Flask server running in background")
-# ====== Start Bot ======
-print("✅ ShieldX Bot running...")
-app.run()  # synchronous, bot events fully responsive
+asyncio.run(main())
 
