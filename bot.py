@@ -18,7 +18,7 @@ from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 # ====== Pyrogram Client ======
 from pyrogram import Client
 
-app_bot = Client(
+app = Client(
     "ShieldX-Bot",
     api_id=API_ID,
     api_hash=API_HASH,
@@ -75,7 +75,7 @@ async def start_handler(client: Client, message):
         f"✨ **Welcome, {user}!** ✨\n\n"
         "I'm 🛡️ **ShieldX Protector** 🤖 Bot — your all-in-one AI Group Security system.\n\n"
         "🔹 **Key Protections:**\n"
-        "   ✨🛡️ **Bio Shield:** Automatically scans & removes any links from user bios 🔗\n"
+       "   ✨🛡️ **Bio Shield:** Automatically scans & removes any links from user bios 🔗\n"
         "   • Auto-deletes edited or spam messages 🧹\n"
         "   • Smart abuse filter with auto delete ⚔️\n"
         "   • Custom warning limits with punishments 🚨\n"
