@@ -13,12 +13,16 @@ SESSION_FILE = "ShieldX.session"
 # ======================= MongoDB Config =======================
 mongo_url = os.environ.get("MONGO_URI")
 
+if not mongo_url:
+    raise ValueError("❌ MONGO_URI environment variable not set!")
+
 try:
     client = motor.motor_asyncio.AsyncIOMotorClient(mongo_url)
     db = client["mydb"]
     print("✅ Connected to MongoDB")
 except Exception as e:
     print(f"❌ MongoDB Connection Error: {e}")
+    raise e  # strict mode: fail deploy if connection fails
 
 # ======================= Default Config =======================
 DEFAULT_WARNING_LIMIT = 3
