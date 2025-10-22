@@ -445,39 +445,48 @@ async def handle_edited_message(client: Client, message: Message):
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
 
-import threading, asyncio, requests, os, socket
+import threading
+import asyncio
+import requests
+import os
 from pyrogram import Client
 from flask import Flask
 
-# --- Flask ---
+# ====== Flask Health Server ======
 flask_app = Flask("ShieldXBot")
-RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://your-render-url.com")
+RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
+PORT = int(os.environ.get("PORT", 8080))
 
 @flask_app.route("/health")
 def health():
-    return "✅ Bot running"
+    return "✅ Bot is running"
 
 def run_flask():
-    port = int(os.environ.get("PORT", 8080))
-    flask_app.run(host="0.0.0.0", port=port)
+    flask_app.run(host="0.0.0.0", port=PORT)
 
+# Start Flask in a background thread
 threading.Thread(target=run_flask, daemon=True).start()
+print(f"✅ Flask server running on port {PORT}")
 
-# --- Watchdog ---
-async def watchdog():
+# ====== Watchdog ======
+async def watchdog(client: Client, user_id: int):
     while True:
         try:
+            # Ping Render health endpoint
             requests.get(f"{RENDER_URL}/health", timeout=5)
-            await app.send_message("YOUR_USER_ID", "⏰ Bot alive")
-        except:
-            pass
-        await asyncio.sleep(1800)
+            # DM to owner/admin
+            await client.send_message(user_id, "⏰ Bot is alive")
+        except Exception as e:
+            print(f"[Watchdog] Ping failed: {e}")
+        await asyncio.sleep(1800)  # 30 min
 
-# --- Start bot ---
+# ====== Main Async Bot Runner ======
 async def main():
-    async with app:
-        asyncio.create_task(watchdog())
+    async with app:  # 'app' is your Pyrogram client
+        # Start watchdog task
+        asyncio.create_task(watchdog(app, 7959353330))  # Replace with your Telegram ID
+        # Keep bot running
         await app.idle()
 
+# Run the bot
 asyncio.run(main())
-
