@@ -507,16 +507,20 @@ async def start_bot():
 
     while True:
         try:
-            await app.start()  # <- Pyrogram client
+            await app.start()  # Pyrogram client start
             print("✅ Pyrogram client started.")
+            # Flask aur Pyrogram dono async run ho rahe hai, loop continue karenge
+            await asyncio.Event().wait()  # <-- infinite wait instead of idle()
             break
         except Exception as e:
             print(f"[Bot] Start failed: {e} | Retrying in 5s...")
             await asyncio.sleep(5)
+
 if __name__ == "__main__":
     # Flask ko daemon thread me run karo
     threading.Thread(target=run_flask, daemon=True).start()
 
     # Async Pyrogram bot run karo
     asyncio.run(start_bot())
+
 
