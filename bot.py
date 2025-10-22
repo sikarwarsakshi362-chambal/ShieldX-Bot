@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
-# ShieldX Protector Bot — JSON Fix (Ready-to-Use)
+# ShieldX Protector Bot — Full Render & Gunicorn Ready Patch
 
-from pyrogram import Client, filters, errors, enums
-from pyrogram.types import (
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    ChatPermissions,
-    Message
-)
-import asyncio
 import threading
 import requests
-import socket
-from flask import Flask
+import os
+from pyrogram import Client
+from flask import Flask, request
+import telegram
+import asyncio
 
 # ====== Bot Config & Helpers ======
 from helper.utils import (
@@ -28,13 +23,59 @@ from helper.utils import (
 )
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 
-# ====== Pyrogram Client (Main Bot Instance) ======
+# ====== Environment & Config ======
+RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL", f"{RENDER_URL}/webhook")
+PORT = int(os.environ.get("PORT", 8080))
+OWNER_ID = int(os.environ.get("OWNER_ID", 7959353330))
+
+# ====== Pyrogram Client ======
 app = Client(
     "ShieldX-Bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
+
+# ====== Telegram Bot for Webhook ======
+bot = telegram.Bot(token=BOT_TOKEN)
+bot.set_webhook(WEBHOOK_URL)
+
+# ====== Flask Server ======
+flask_app = Flask("ShieldXBot")
+
+@flask_app.route("/health")
+def health():
+    return "✅ Bot is running"
+
+@flask_app.route("/webhook", methods=["POST"])
+def webhook():
+    update = telegram.Update.de_json(request.get_json(force=True), bot)
+    if update.message:
+        print(f"[Webhook] Message from {update.message.from_user.id}: {update.message.text}")
+    return "ok", 200
+
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=PORT)
+
+# ====== Start Flask in background thread ======
+threading.Thread(target=run_flask, daemon=True).start()
+print(f"✅ Flask server running on port {PORT}")
+
+# ====== Watchdog Task ======
+async def watchdog(client: Client, user_id: int):
+    while True:
+        try:
+            requests.get(f"{RENDER_URL}/health", timeout=600)
+            await client.send_message(user_id, "⏰ Bot is alive")
+        except Exception as e:
+            print(f"[Watchdog] Ping failed: {e}")
+        await asyncio.sleep(1800)  # 30 min
+
+# ====== Schedule Watchdog on Pyrogram Start ======
+@app.on_connect()
+async def start_watchdog_task(client):
+    asyncio.create_task(watchdog(client, OWNER_ID))
 
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
@@ -424,9 +465,7 @@ async def handle_edited_message(client: Client, message: Message):
         return
 
     # Ignore reactions / service messages
-    if getattr(message, "via_bot_id", None) is not None:
-        return
-    if message.service:
+    if getattr(message, "via_bot_id", None) is not None or message.service:
         return
 
     try:
@@ -434,7 +473,10 @@ async def handle_edited_message(client: Client, message: Message):
         if not user:
             return
 
+        # Delete the edited message
         await message.delete()
+
+        # Optional: send a simple warning message
         warn = await message.reply_text(
             f"⚠️ {user.mention}, editing messages is not allowed!",
             quote=True
@@ -445,45 +487,3 @@ async def handle_edited_message(client: Client, message: Message):
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
 
-import threading
-import asyncio
-import requests
-import os
-from pyrogram import Client
-from flask import Flask
-
-# ====== Flask Health Server ======
-flask_app = Flask("ShieldXBot")
-RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
-PORT = int(os.environ.get("PORT", 8080))
-
-@flask_app.route("/health")
-def health():
-    return "✅ Bot is running"
-
-def run_flask():
-    flask_app.run(host="0.0.0.0", port=PORT)
-
-# Start Flask in a background thread
-threading.Thread(target=run_flask, daemon=True).start()
-print(f"✅ Flask server running on port {PORT}")
-
-# ====== Watchdog ======
-async def watchdog(client: Client, user_id: int):
-    while True:
-        try:
-            # Ping Render health endpoint
-            requests.get(f"{RENDER_URL}/health", timeout=600)
-            # DM to owner/admin
-            await client.send_message(user_id, "⏰ Bot is alive")
-        except Exception as e:
-            print(f"[Watchdog] Ping failed: {e}")
-        await asyncio.sleep(1800)  # 30 min
-
-# ====== Main Async Bot Runner ======
-async def main():
-    async with app:  # 'app' is your Pyrogram client
-        # Start watchdog task
-        asyncio.create_task(watchdog(app, 7959353330))  # Replace with your Telegram ID
-        # Keep bot running
-        await app.idle()
