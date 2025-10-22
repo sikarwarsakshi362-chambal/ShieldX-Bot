@@ -1,8 +1,7 @@
-pyrogram==2.3.68
+pyrofork
 tgcrypto==1.2.5
 requests==2.32.3
 Flask==3.0.3
 gunicorn==20.1.0
 pymediainfo-pyrofork==6.0.2
-pyrofork==2.3.68
 PySocks==1.7.1
