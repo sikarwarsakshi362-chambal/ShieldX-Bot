@@ -1,1 +1,1 @@
-worker: gunicorn bot:flask_app --preload
+web: gunicorn bot:flask_app --preload
