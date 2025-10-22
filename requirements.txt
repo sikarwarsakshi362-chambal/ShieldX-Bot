@@ -3,4 +3,5 @@ tgcrypto==1.2.5          # Pyrogram crypto dependency
 Flask==3.0.3             # Health server
 requests==2.32.3         # Watchdog ping / HTTP requests
 motor==3.6.0             # Async MongoDB client
-dnspython>=2.4.0         # MongoDB SRV DNS support
+pymongo==4.9.2           # MongoDB driver
+dnspython==2.8.0         # Pin exact version for compatibility
