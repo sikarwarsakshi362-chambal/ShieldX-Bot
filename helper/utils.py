@@ -1,4 +1,4 @@
-from pyrogram import Client
+from pyrogram import Client, enums, filters
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import MONGO_URI, DEFAULT_CONFIG, DEFAULT_PUNISHMENT, DEFAULT_WARNING_LIMIT
 
@@ -9,10 +9,6 @@ db = mongo_client['telegram_bot_db']
 warnings_collection = db['warnings']
 punishments_collection = db['punishments']
 allowlists_collection = db['whitelists']  # allowlist collection
-
-warnings_collection = db['warnings']
-punishments_collection = db['punishments']
-allowlists_collection = db['whitelists']  # collection name same as before
 
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
     async for member in client.get_chat_members(
@@ -75,7 +71,6 @@ async def get_allowlist(chat_id: int) -> list:
     cursor = allowlists_collection.find({'chat_id': chat_id})
     docs = await cursor.to_list(length=None)
     return [doc['user_id'] for doc in docs]
-
 
 # Default settings for new chats (used by abuse/bio/nsfw modules)
 def get_default_settings():
