@@ -6,10 +6,9 @@ import requests
 import os
 from pyrogram import Client
 from flask import Flask, request
-import asyncio
 import telegram
+import asyncio
 from abuse import abuse_check_handler
-
 
 # ====== Bot Config & Helpers ======
 from helper.utils import (
@@ -45,7 +44,10 @@ async def global_message_handler(client, message):
 
 # ====== Telegram Bot for Webhook ======
 bot = telegram.Bot(token=BOT_TOKEN)
-bot.set_webhook(WEBHOOK_URL)
+
+async def set_webhook():
+    # Set webhook asynchronously
+    await bot.set_webhook(WEBHOOK_URL)
 
 # ====== Flask Server ======
 flask_app = Flask("ShieldXBot")
@@ -61,7 +63,6 @@ def webhook():
         print(f"[Webhook] Message from {update.message.from_user.id}: {update.message.text}")
     return "ok", 200
 
-# ====== Run Flask as a separate thread ======
 def run_flask():
     flask_app.run(host="0.0.0.0", port=PORT)
 
@@ -80,10 +81,15 @@ async def watchdog(client: Client, user_id: int):
         await asyncio.sleep(1800)  # 30 min
 
 # ====== Schedule Watchdog on Pyrogram Start ======
-@app.on_connect()
+@app.on_start()
 async def start_watchdog_task(client):
-    # Run the watchdog asynchronously with asyncio.create_task
     asyncio.create_task(watchdog(client, OWNER_ID))
+
+# Run the webhook setup and bot in background
+@app.on_start()
+async def on_start(client):
+    await set_webhook()
+    print(f"✅ Webhook set to: {WEBHOOK_URL}")
 
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
