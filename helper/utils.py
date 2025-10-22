@@ -1,3 +1,4 @@
+from pyrogram import Client
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import MONGO_URI, DEFAULT_CONFIG, DEFAULT_PUNISHMENT, DEFAULT_WARNING_LIMIT
 
