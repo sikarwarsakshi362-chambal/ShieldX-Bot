@@ -14,13 +14,14 @@ from helper.utils import (
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 
 # ====== Pyrogram Client ======
+from pyrogram import Client
+
 app_bot = Client(
     "ShieldX-Bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
-
 # ====== Flask Server & Health ======
 flask_app = Flask("ShieldXBot")
 RENDER_URL = "https://shieldx-bot-1.onrender.com"
@@ -440,59 +441,67 @@ async def check_bio(client: Client, message):
 from pyrogram import Client, filters
 from pyrogram.types import Message
 import asyncio
-
 # =============================== ABUSE DETECTION ===============================
 ABUSE_KEYWORDS = [
-    "chutiya", "bhosdike", "lund", "gandu", "randi", "kutti", "bsdk", "bahanchod",
-    "kutta", "madarchod", "sala", "harami", "behenchod", "jhatu", "lodu", "choot",
-    "mc", "bc", "lundu", "jeeja", "tharki", "sex", "fuck", "bitch", "ass", "cock", "dick",
-    "boobs", "slut", "anal", "cum", "naked", "porn", "xxx", "tits", "pussy", "fuckme",
-    "masturbate", "whore", "prostitute", "retard", "idiot", "jerk", "shit", "damn", "crap"
+    "chutiya","bhosdike","lund","gandu","randi","kutti","bsdk","bahanchod",
+    "kutta","madarchod","sala","harami","behenchod","jhatu","lodu","choot",
+    "mc","bc","lundu","jeeja","tharki","sex","fuck","bitch","ass","cock","dick",
+    "boobs","slut","anal","cum","naked","porn","xxx","tits","pussy","fuckme",
+    "masturbate","whore","prostitute","retard","idiot","jerk","shit","damn","crap"
 ]
 ABUSE_KEYWORDS = [w.lower() for w in ABUSE_KEYWORDS]
 
 def is_abuse(text: str) -> bool:
     return any(word in text.lower() for word in ABUSE_KEYWORDS)
 
-app = Client("my_bot")
+@app_bot.on_message(filters.group & filters.text)
+async def abuse_auto_delete(client, message):
+    user_id = message.from_user.id
+    chat_id = message.chat.id
 
-@app.on_message(filters.group & filters.text)
-async def abuse_auto_delete(client: Client, message: Message):
-    user = message.from_user
+    # Skip admins / allowlisted users
+    if await is_admin(client, chat_id, user_id) or await is_allowlisted(chat_id, user_id):
+        return
+
     if not message.text:
         return
 
-    try:
-        # If the message contains abusive content, delete it
-        if is_abuse(message.text):
+    if is_abuse(message.text):
+        try:
             await message.delete()
-            warn = await message.reply_text(f"⚠️ {user.mention} Abusive content removed!", quote=True)
+        except:
+            pass  # Delete permission missing
+
+        try:
+            warn = await message.reply_text(
+                f"⚠️ {message.from_user.mention} Abusive content removed!",
+                quote=True
+            )
             await asyncio.sleep(5)
             await warn.delete()
-    except Exception as e:
-        print(f"[ABUSE Handler ERROR] {e}")
-
+        except:
+            pass
 # ======================= Edited Messages (Safe) =======================
 from pyrogram.types import Message
 import asyncio
-
-@app.on_edited_message(filters.group & filters.text)
+@app_bot.on_edited_message(filters.group & filters.text)
 async def handle_edited_message(client: Client, message: Message):
-    # ✅ Only delete if it's a text edit (reactions will not trigger)
-    if message.text and not message.reaction:  # Avoiding reactions or emoji responses
-        try:
-            await message.delete()
-            user = message.from_user
-            if user:
-                warn = await message.reply_text(
-                    f"⚠️ {user.mention}, editing messages is not allowed!",
-                    quote=True
-                )
-                await asyncio.sleep(10)
-                await warn.delete()
-        except Exception as e:
-            print(f"[Edit Block Handler] {e}")
+    if not message.text:  # only proceed if text exists
+        return
 
+    # delete edited message safely
+    try:
+        await message.delete()
+        user = message.from_user
+        if user:
+            warn = await message.reply_text(
+                f"⚠️ {user.mention}, editing messages is not allowed!",
+                quote=True
+            )
+            await asyncio.sleep(10)
+            await warn.delete()
+    except Exception as e:
+        print(f"[Edit Block Handler] {e}")
 # ====== Bot Start ======
 async def start_bot():
     print("✅ ShieldX Bot running...")
