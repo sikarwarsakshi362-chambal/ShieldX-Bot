@@ -513,10 +513,6 @@ async def start_bot():
         except Exception as e:
             print(f"[Bot] Start failed: {e} | Retrying in 5s...")
             await asyncio.sleep(5)
-
-    # Bot idle rakho taaki commands kaam karte rahein
-    await app.idle()
-
 if __name__ == "__main__":
     # Flask ko daemon thread me run karo
     threading.Thread(target=run_flask, daemon=True).start()
