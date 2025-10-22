@@ -1,4 +1,4 @@
-pyrogram==2.0.106        # Telegram client
+pyrofork==2.0.106        # Telegram client fork (stable for async + Render)
 tgcrypto==1.2.5          # Pyrogram crypto dependency
 Flask==3.0.3             # Health server
 requests==2.32.3         # Watchdog ping / HTTP requests
