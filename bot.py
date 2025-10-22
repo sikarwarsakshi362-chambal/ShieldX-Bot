@@ -6,7 +6,6 @@ import requests
 import os
 from pyrogram import Client
 from flask import Flask, request
-import telegram
 import asyncio
 from abuse import abuse_check_handler
 
@@ -61,6 +60,7 @@ def webhook():
         print(f"[Webhook] Message from {update.message.from_user.id}: {update.message.text}")
     return "ok", 200
 
+# ====== Run Flask as a separate thread ======
 def run_flask():
     flask_app.run(host="0.0.0.0", port=PORT)
 
@@ -81,6 +81,7 @@ async def watchdog(client: Client, user_id: int):
 # ====== Schedule Watchdog on Pyrogram Start ======
 @app.on_connect()
 async def start_watchdog_task(client):
+    # Run the watchdog asynchronously with asyncio.create_task
     asyncio.create_task(watchdog(client, OWNER_ID))
 
 # ====== TOP PATCH END ======
