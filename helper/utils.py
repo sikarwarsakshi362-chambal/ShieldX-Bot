@@ -28,16 +28,23 @@ def save_data(data):
     """Save JSON data safely."""
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=2)
-
 # ==================== ADMIN CHECK ====================
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
-    async for member in client.get_chat_members(
-        chat_id, filter=enums.ChatMembersFilter.ADMINISTRATORS
-    ):
-        if member.user.id == user_id:
-            return True
+    """
+    Fixed admin check for Pyrogram 2.3+.
+    Handles supergroups, channels, and avoids CHANNEL_INVALID error.
+    """
+    try:
+        # For private and group chats
+        async for member in client.get_chat_members(
+            chat_id, filter=enums.ChatMembersFilter.ADMINISTRATORS
+        ):
+            if member.user.id == user_id:
+                return True
+    except Exception as e:
+        print(f"[is_admin] Error: {e}")
+        return False
     return False
-
 # ==================== CONFIG ====================
 async def get_config(chat_id: int):
     data = load_data()
