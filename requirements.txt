@@ -1,11 +1,6 @@
-pyrogram==2.0.106
-tgcrypto==1.2.5
-Flask==3.0.3
-python-dotenv==1.0.1
-requests==2.32.3
-aiohttp==3.10.5
-pillow==10.4.0
-nest_asyncio==1.6.0
-opencv-python==4.10.0.84
-pyrofork==2.3.43
-motor==3.6.0
+pyrogram==2.0.106        # Telegram client
+tgcrypto==1.2.5          # Pyrogram crypto dependency
+Flask==3.0.3             # Health server
+requests==2.32.3         # Watchdog ping / HTTP requests
+motor==3.6.0             # Async MongoDB client
+dnspython>=2.4.0         # MongoDB SRV DNS support
