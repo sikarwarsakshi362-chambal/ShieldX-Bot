@@ -9,7 +9,7 @@ SUPPORT_LINK = "https://t.me/+yGiJaSdHDoRlN2Zl"
 SESSION_FILE = "ShieldX.session"
 
 # MongoDB connection URI
-MONGO_URI = "your_mongodb_url"
+MONGO_URI = ""
 
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute" # Options: "mute", "ban"
