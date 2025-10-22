@@ -3,7 +3,7 @@ import os
 from pyrogram import Client, enums
 from config import DEFAULT_CONFIG, DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT
 
-# JSON data file path
+# JSON data file
 DATA_FILE = "data.json"
 
 # ==================== JSON HELPERS ====================
@@ -42,10 +42,9 @@ async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
 async def get_config(chat_id: int):
     data = load_data()
     cfg = data["punishments"].get(str(chat_id), {})
-    # Updated keys to match new DEFAULT_CONFIG
-    mode = cfg.get("mode", DEFAULT_CONFIG.get("warn_type", "warn"))
-    limit = cfg.get("limit", DEFAULT_CONFIG.get("warning_limit", DEFAULT_WARNING_LIMIT))
-    penalty = cfg.get("penalty", DEFAULT_CONFIG.get("punishment", DEFAULT_PUNISHMENT))
+    mode = cfg.get("mode", DEFAULT_CONFIG.get("mode", "warn"))
+    limit = cfg.get("limit", DEFAULT_CONFIG.get("limit", DEFAULT_WARNING_LIMIT))
+    penalty = cfg.get("penalty", DEFAULT_CONFIG.get("penalty", DEFAULT_PUNISHMENT))
     return mode, limit, penalty
 
 async def update_config(chat_id: int, mode=None, limit=None, penalty=None):
