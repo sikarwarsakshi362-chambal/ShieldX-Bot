@@ -1,13 +1,15 @@
-# modules/abuse.py
+# abuse.py
 # =========================
-# Abuse filter module (delete + warn only, no penalties)
+# Abuse filter (delete + warn only, no exemptions)
 # Admins and allowlisted users are NOT bypassed
+# Abuse filter can be toggled with /abuse on or /abuse off
 # =========================
 
 import re
 import asyncio
-from pyrogram import Client, errors
+from pyrogram import Client, errors, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+from helper.utils import increment_warning, reset_warnings
 
 # ================= abusive words =================
 ABUSIVE_WORDS = [
@@ -18,12 +20,11 @@ ABUSIVE_WORDS = [
     "bhosdike", "chutiya", "madarchod", "randi", "gandu", "lund", "chodu", 
     "harami", "kamina", "kutte", "saala", "haramzada", "bhenchod", "betichod",
     "chod", "jhant", "loda", "lodu", "randi", "motha", "badmaash",
-    # lowercase + capital variations will be normalized
 ]
 
 ABUSE_RE = re.compile(r"\b(" + "|".join(re.escape(w) for w in ABUSIVE_WORDS) + r")\b", flags=re.IGNORECASE)
 
-# ================= normalize text for leet/emoji =================
+# ================= normalize text =================
 _LEET = str.maketrans({
     "0": "o", "1": "i", "3": "e", "4": "a", "@": "a", "$": "s", "5": "s", "7": "t"
 })
@@ -36,15 +37,23 @@ def normalize_text(text: str) -> str:
     s = re.sub(r"[\u200B-\u200F\uFEFF]", "", s)  # zero-width
     return s
 
-# ================= helper utils =================
-from helper.utils import increment_warning, reset_warnings, add_allowlist, get_allowlist
+# ================= abuse state per chat =================
+ABUSE_STATE = {}  # chat_id -> True/False
+
+def is_abuse_enabled(chat_id: int) -> bool:
+    return ABUSE_STATE.get(chat_id, True)
+
+def set_abuse_state(chat_id: int, state: bool):
+    ABUSE_STATE[chat_id] = state
 
 # ================= abuse handler =================
 async def abuse_check_handler(client: Client, message: Message):
+    if not is_abuse_enabled(message.chat.id):
+        return
+
     if message.from_user is None or message.from_user.is_bot:
         return
 
-    # text or caption
     text = message.text or message.caption
     if not text:
         return
@@ -63,9 +72,7 @@ async def abuse_check_handler(client: Client, message: Message):
         full_name = f"{message.from_user.first_name}{(' ' + message.from_user.last_name) if message.from_user.last_name else ''}"
         mention = f"[{full_name}](tg://user?id={user_id})"
 
-        # increment warning count
         count = await increment_warning(message.chat.id, user_id)
-
         text_warn = (
             f"🚨 **Warning Issued** 🚨\n\n"
             f"👤 {mention} `[{user_id}]`\n"
@@ -74,16 +81,8 @@ async def abuse_check_handler(client: Client, message: Message):
             "Please stop using abusive language."
         )
 
-        kb = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("❌ Cancel Warning", callback_data=f"cancel_warn_{user_id}"),
-                InlineKeyboardButton("✅ Allowlist", callback_data=f"allowlist_{user_id}")
-            ],
-            [InlineKeyboardButton("🗑️ Delete", callback_data="Delete")]
-        ])
-
         try:
-            await message.reply_text(text_warn, reply_markup=kb, parse_mode="md")
+            await message.reply_text(text_warn, parse_mode="md")
         except Exception:
             pass
 
@@ -104,3 +103,30 @@ def _recompile():
     global ABUSE_RE
     ABUSE_RE = re.compile(r"\b(" + "|".join(re.escape(w) for w in ABUSIVE_WORDS) + r")\b", flags=re.IGNORECASE)
 
+# ================= abuse toggle command =================
+@Client.on_message(filters.command("abuse") & filters.group)
+async def abuse_toggle_cmd(client: Client, message: Message):
+    if not message.from_user:
+        return
+    # only admins can toggle
+    try:
+        member = await client.get_chat_member(message.chat.id, message.from_user.id)
+        if not (member.status in ["administrator", "creator"]):
+            await message.reply_text("❌ Only admins can toggle abuse filter.")
+            return
+    except:
+        return
+
+    if len(message.command) < 2:
+        await message.reply_text("Usage: /abuse on | off")
+        return
+
+    arg = message.command[1].lower()
+    if arg == "on":
+        set_abuse_state(message.chat.id, True)
+        await message.reply_text("✅ Abuse filter enabled.")
+    elif arg == "off":
+        set_abuse_state(message.chat.id, False)
+        await message.reply_text("⚠️ Abuse filter disabled.")
+    else:
+        await message.reply_text("Usage: /abuse on | off")
