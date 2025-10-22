@@ -3,7 +3,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "modules"))
 
 from pyrogram import Client, enums, filters
 from motor.motor_asyncio import AsyncIOMotorClient
-
 from config import (
     MONGO_URI,
     DEFAULT_CONFIG,
@@ -11,11 +10,13 @@ from config import (
     DEFAULT_WARNING_LIMIT
 )
 
+# ✅ Use consistent Mongo variable
 mongo_client = AsyncIOMotorClient(MONGO_URI)
 db = mongo_client['telegram_bot_db']
+
 warnings_collection = db['warnings']
 punishments_collection = db['punishments']
-allowlists_collection = db['whitelists']  # collection name abhi bhi same
+allowlists_collection = db['whitelists']  # collection name same as before
 
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
     async for member in client.get_chat_members(
