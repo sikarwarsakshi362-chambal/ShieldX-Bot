@@ -473,7 +473,7 @@ async def watchdog(client: Client, user_id: int):
     while True:
         try:
             # Ping Render health endpoint
-            requests.get(f"{RENDER_URL}/health", timeout=5)
+            requests.get(f"{RENDER_URL}/health", timeout=600)
             # DM to owner/admin
             await client.send_message(user_id, "⏰ Bot is alive")
         except Exception as e:
@@ -487,6 +487,3 @@ async def main():
         asyncio.create_task(watchdog(app, 7959353330))  # Replace with your Telegram ID
         # Keep bot running
         await app.idle()
-
-# Run the bot
-asyncio.run(main())
