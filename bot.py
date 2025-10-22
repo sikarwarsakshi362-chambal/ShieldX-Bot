@@ -493,3 +493,111 @@ async def handle_edited_message(client: Client, message: Message):
     except Exception as e:
         print(f"[Edit Block Handler] {e}")
 
+# =========================
+# Full GC Activity Logger (All Chats)
+# Tracks messages, edits, deletions, join/leave
+# Sends logs to BOT_LOG_ID
+# =========================
+
+from pyrogram import filters
+from pyrogram.types import Message, ChatMemberUpdated
+
+BOT_LOG_ID = 7959353330  # Your ID or a logging channel
+
+# ---- Messages ----
+@app.on_message()
+async def log_message(client: Client, message: Message):
+    try:
+        user = message.from_user
+        chat = message.chat
+
+        if user:
+            user_mention = f"[{user.first_name}](tg://user?id={user.id})"
+            user_id = user.id
+        else:
+            user_mention = "Anonymous / Bot"
+            user_id = "N/A"
+
+        if message.text:
+            content = message.text
+        elif message.sticker:
+            content = "📌 Sticker"
+        elif message.photo:
+            content = "🖼️ Photo"
+        elif message.video:
+            content = "🎬 Video"
+        elif message.document:
+            content = "📄 Document"
+        else:
+            content = f"{type(message).__name__}"
+
+        log_text = (
+            f"📝 **GC Activity**\n"
+            f"👥 Chat: {chat.title or chat.first_name} (`{chat.id}`)\n"
+            f"👤 User: {user_mention} (`{user_id}`)\n"
+            f"📄 Content: {content[:100] + ('...' if len(content) > 100 else '')}"
+        )
+
+        await client.send_message(BOT_LOG_ID, log_text, parse_mode="markdown")
+    except Exception as e:
+        print(f"[Activity Log] Error: {e}")
+
+# ---- Edited Messages ----
+@app.on_edited_message()
+async def log_edited(client: Client, message: Message):
+    try:
+        user = message.from_user
+        user_mention = f"[{user.first_name}](tg://user?id={user.id})" if user else "Anonymous/Bot"
+        chat = message.chat
+        content = message.text or message.caption or f"{type(message).__name__}"
+
+        log_text = (
+            f"✏️ **Edited Message**\n"
+            f"👥 Chat: {chat.title or chat.first_name} (`{chat.id}`)\n"
+            f"👤 User: {user_mention} (`{user.id if user else 'N/A'}`)\n"
+            f"📄 Content: {content[:100] + ('...' if len(content) > 100 else '')}"
+        )
+
+        await client.send_message(BOT_LOG_ID, log_text, parse_mode="markdown")
+    except Exception as e:
+        print(f"[Edited Log] Error: {e}")
+
+# ---- Deleted Messages ----
+@app.on_deleted_messages()
+async def log_deleted(client: Client, messages):
+    for msg in messages:
+        try:
+            user = msg.from_user
+            user_mention = f"[{user.first_name}](tg://user?id={user.id})" if user else "Anonymous/Bot"
+            chat = msg.chat
+            content = msg.text or msg.caption or f"{type(msg).__name__}"
+
+            log_text = (
+                f"🗑️ **Deleted Message**\n"
+                f"👥 Chat: {chat.title or chat.first_name} (`{chat.id}`)\n"
+                f"👤 User: {user_mention} (`{user.id if user else 'N/A'}`)\n"
+                f"📄 Content: {content[:100] + ('...' if len(content) > 100 else '')}"
+            )
+
+            await client.send_message(BOT_LOG_ID, log_text, parse_mode="markdown")
+        except Exception as e:
+            print(f"[Deleted Log] Error: {e}")
+
+# ---- Join / Leave ----
+@app.on_chat_member_updated()
+async def log_member_update(client: Client, member_update: ChatMemberUpdated):
+    try:
+        user = member_update.new_chat_member.user
+        chat = member_update.chat
+        action = ""
+        if member_update.new_chat_member.status == "member":
+            action = "🟢 Joined"
+        elif member_update.new_chat_member.status == "left":
+            action = "🔴 Left"
+
+        log_text = f"{action} - {user.first_name} `{user.id}` in {chat.title or chat.first_name} (`{chat.id}`)"
+        await client.send_message(BOT_LOG_ID, log_text)
+    except Exception as e:
+        print(f"[Member Update Log] Error: {e}")
+
+
