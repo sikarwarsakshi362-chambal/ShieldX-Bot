@@ -1,7 +1,5 @@
 pyrofork        # Pyrogram fork
 tgcrypto        # Pyrogram crypto dependency
 motor           # Async MongoDB client
-pymongo==4.9.2  # MongoDB driver for motor
 Flask==3.0.3    # Health server
 requests==2.32.3 # Watchdog ping / HTTP requests
-dnspython==2.8.0 # Required by motor/pymongo for DNS resolution
