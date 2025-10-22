@@ -26,7 +26,6 @@ from helper.utils import (
     remove_allowlist,
     get_allowlist
 )
-
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 
 # ====== Pyrogram Client (Main Bot Instance) ======
@@ -37,92 +36,6 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
-# ====== Example JSON Usage ======
-@app.on_message()
-async def example_json_usage(client, message: Message):
-    # Ignore bots
-    if message.from_user is None or message.from_user.is_bot:
-        return
-
-    chat_id = message.chat.id
-    user_id = message.from_user.id
-
-    # Check if user is allowlisted
-    if not await is_allowlisted(chat_id, user_id):
-        # Increment warning count
-        count = await increment_warning(chat_id, user_id)
-        
-        # Get chat-specific config
-        mode, limit, penalty = await get_config(chat_id)
-        
-        # Example action based on warnings
-        if count >= limit:
-            await reset_warnings(chat_id, user_id)
-            if penalty == "mute":
-                try:
-                    await client.restrict_chat_member(
-                        chat_id,
-                        user_id,
-                        ChatPermissions(can_send_messages=False)
-                    )
-                    await message.reply_text(f"⚠️ User muted for exceeding {limit} warnings.")
-                except errors.ChatAdminRequired:
-                    await message.reply_text("❌ I need admin rights to mute members.")
-            elif penalty == "ban":
-                try:
-                    await client.kick_chat_member(chat_id, user_id)
-                    await message.reply_text(f"⛔ User banned for exceeding {limit} warnings.")
-                except errors.ChatAdminRequired:
-                    await message.reply_text("❌ I need admin rights to ban members.")
-        else:
-            await message.reply_text(f"⚠️ Warning {count}/{limit} for breaking rules.")
-
-from modules.abuse import abuse_check_handler
-@app.on_message(filters.group & (filters.text | filters.caption))
-async def _abuse_bridge(client, message):
-    await abuse_check_handler(client, message)
-
-@app.on_edited_message(filters.group & (filters.text | filters.caption))
-async def _abuse_edited_bridge(client, message):
-    await abuse_check_handler(client, message)
-
-# ====== Flask Server & Health ======
-flask_app = Flask("ShieldXBot")
-RENDER_URL = "https://shieldx-bot-1.onrender.com"
-
-@flask_app.route("/health")
-def health():
-    return "ShieldX Bot is running ✅"
-
-def find_free_port(start_port=8080, max_port=8090):
-    for port in range(start_port, max_port + 1):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind(("0.0.0.0", port))
-                return port
-            except OSError:
-                continue
-    return 8080  # fallback
-
-def run_flask():
-    port = find_free_port()
-    print(f"✅ Flask server starting on port {port} (/health)")
-    try:
-        flask_app.run(host="0.0.0.0", port=port)
-    except Exception as e:
-        print(f"[Flask] Error: {e} | Retrying...")
-        run_flask()  # self-restart on crash
-
-# ====== Watchdog Ping (async, 30min DM) ======
-async def watchdog_ping(client: Client):
-    while True:
-        try:
-            r = requests.get(RENDER_URL + "/health", timeout=5)
-            print(f"[Watchdog] Render pinged | Status: {r.status_code}")
-            await client.send_message("7959353330", "⏰ ShieldX Bot is alive")
-        except Exception as e:
-            print(f"[Watchdog] Ping failed: {e}")
-        await asyncio.sleep(1800)  # 30 min
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
 async def start_handler(client: Client, message):
@@ -543,9 +456,43 @@ async def handle_edited_message(client: Client, message: Message):
 import threading
 import asyncio
 
-# ====== Flask Health Server ======
-threading.Thread(target=run_flask, daemon=True).start()
-print("✅ Flask server running in background")
+# ====== Flask Server & Health ======
+flask_app = Flask("ShieldXBot")
+RENDER_URL = "https://shieldx-bot-1.onrender.com"
+
+@flask_app.route("/health")
+def health():
+    return "ShieldX Bot is running ✅"
+
+def find_free_port(start_port=8080, max_port=8090):
+    for port in range(start_port, max_port + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("0.0.0.0", port))
+                return port
+            except OSError:
+                continue
+    return 8080  # fallback
+
+def run_flask():
+    port = find_free_port()
+    print(f"✅ Flask server starting on port {port} (/health)")
+    try:
+        flask_app.run(host="0.0.0.0", port=port)
+    except Exception as e:
+        print(f"[Flask] Error: {e} | Retrying...")
+        run_flask()  # self-restart on crash
+
+# ====== Watchdog Ping (async, 30min DM) ======
+async def watchdog_ping(client: Client):
+    while True:
+        try:
+            r = requests.get(RENDER_URL + "/health", timeout=5)
+            print(f"[Watchdog] Render pinged | Status: {r.status_code}")
+            await client.send_message("7959353330", "⏰ ShieldX Bot is alive")
+        except Exception as e:
+            print(f"[Watchdog] Ping failed: {e}")
+        await asyncio.sleep(1800)  # 30 min
 
 # ====== Watchdog Ping ======
 async def start_watchdog():
@@ -555,6 +502,9 @@ async def start_watchdog():
 loop = asyncio.get_event_loop()
 loop.create_task(start_watchdog())
 
+# ====== Flask Health Server ======
+threading.Thread(target=run_flask, daemon=True).start()
+print("✅ Flask server running in background")
 # ====== Start Bot ======
 print("✅ ShieldX Bot running...")
 app.run()  # synchronous, bot events fully responsive
