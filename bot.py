@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # ShieldX Protector Bot — Full Render & Gunicorn Ready Patch
-
 import threading
 import requests
 import os
@@ -80,16 +79,22 @@ async def watchdog(client: Client, user_id: int):
             print(f"[Watchdog] Ping failed: {e}")
         await asyncio.sleep(1800)  # 30 min
 
-# ====== Schedule Watchdog on Pyrogram Start ======
-@app.on_start()
-async def start_watchdog_task(client):
-    asyncio.create_task(watchdog(client, OWNER_ID))
-
-# Run the webhook setup and bot in background
-@app.on_start()
-async def on_start(client):
+# ====== Start the Pyrogram Client and Set Webhook ======
+async def start_bot():
+    # Start the Pyrogram client
+    await app.start()
+    print(f"✅ Bot started with username {app.me.username}")
+    
+    # Set the webhook after bot is started
     await set_webhook()
     print(f"✅ Webhook set to: {WEBHOOK_URL}")
+    
+    # Schedule the watchdog task
+    asyncio.create_task(watchdog(app, OWNER_ID))
+
+# Running the start function
+asyncio.run(start_bot())
+
 
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
