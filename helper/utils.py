@@ -80,20 +80,17 @@ async def update_config(chat_id: int, mode=None, limit=None, penalty=None):
 # ==================== WARNINGS ====================
 async def increment_warning(chat_id: int, user_id: int) -> int:
     data = load_data()
-    chat_id, user_id = str(chat_id), str(user_id)
-    data.setdefault("warnings", {}).setdefault(chat_id, {}).setdefault(user_id, {"count": 0})
-    data["warnings"][chat_id][user_id]["count"] += 1
-    count = data["warnings"][chat_id][user_id]["count"]
+    key = f"{chat_id}:{user_id}"
+    data["warnings"][key] = data["warnings"].get(key, 0) + 1
     save_data(data)
-    return count
+    return data["warnings"][key]
 
 async def reset_warnings(chat_id: int, user_id: int):
     data = load_data()
-    chat_id, user_id = str(chat_id), str(user_id)
-    if chat_id in data["warnings"] and user_id in data["warnings"][chat_id]:
-        del data["warnings"][chat_id][user_id]
+    key = f"{chat_id}:{user_id}"
+    data["warnings"].pop(key, None)
     save_data(data)
-
+    
 # ==================== ALLOWLIST ====================
 async def is_allowlisted(chat_id: int, user_id: int) -> bool:
     data = load_data()
