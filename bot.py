@@ -3,6 +3,7 @@
 import threading
 import requests
 import os
+import telegram
 from pyrogram import Client, filters  # Import 'filters' here
 from flask import Flask, request
 import asyncio
