@@ -1,10 +1,4 @@
 # abuse.py
-# =========================
-# Abuse filter (delete + warn only, no exemptions)
-# Admins and allowlisted users are NOT bypassed
-# Abuse filter can be toggled with /abuse on or /abuse off
-# =========================
-
 import re
 import asyncio
 from pyrogram import Client, errors, filters
@@ -63,6 +57,10 @@ async def abuse_check_handler(client: Client, message: Message):
     if message.from_user is None or message.from_user.is_bot:
         return
 
+    # COMMANDS BYPASS - yeh line add karo
+    if message.text and message.text.startswith('/'):
+        return
+
     text = message.text or message.caption
     if not text:
         return
@@ -81,6 +79,7 @@ async def abuse_check_handler(client: Client, message: Message):
         full_name = f"{message.from_user.first_name}{(' ' + message.from_user.last_name) if message.from_user.last_name else ''}"
         mention = f"[{full_name}](tg://user?id={user_id})"
 
+        # SABKE LIYE WARNING - no admin/allowlist check
         count = await increment_warning(message.chat.id, user_id)
         text_warn = (
             f"🚨 **Warning Issued** 🚨\n\n"
