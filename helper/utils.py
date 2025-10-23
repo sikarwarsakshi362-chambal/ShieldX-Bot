@@ -113,7 +113,7 @@ async def remove_allowlist(chat_id: int, user_id: int):
 
 async def get_allowlist(chat_id: int) -> list:
     data = load_data()
-    return data.get("allowlists", {}).get(str(chat_id), [])import json
+    return data.get("allowlists", {}).get(str(chat_id), [])
 import os
 from pyrogram import Client, enums
 from config import DEFAULT_CONFIG, DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT
