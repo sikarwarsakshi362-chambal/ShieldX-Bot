@@ -1,1 +1,2 @@
-web: python bot.py
+web: gunicorn bot:flask_app
+
