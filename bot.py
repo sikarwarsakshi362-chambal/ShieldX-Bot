@@ -529,20 +529,16 @@ async def log_member_update(client: Client, member_update: ChatMemberUpdated):
     except Exception as e:
         print(f"[Member Update Log] Error: {e}")
         
-if __name__ == "__main__":
-    import threading, asyncio
+if if __name__ == "__main__":
+    import asyncio
 
-    async def init_bot():
+    async def main():
         await app.start()
         print(f"✅ Bot started as {app.me.username}")
         await bot.set_webhook(WEBHOOK_URL)
         print(f"✅ Webhook set: {WEBHOOK_URL}")
 
-    # Run Flask in background
-    threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=PORT), daemon=True).start()
-    print(f"✅ Flask server running on port {PORT}")
+    asyncio.get_event_loop().run_until_complete(main())
 
-    # Start Pyrogram and set webhook
-    asyncio.run(init_bot())
 
 
