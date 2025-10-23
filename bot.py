@@ -23,9 +23,12 @@ from abuse import abuse_check_handler
 # ====== Pyrogram Setup ======
 app = Client("ShieldX-Bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# Sirf non-command messages pe abuse filter lagao
-@app.on_message(filters.group & ~filters.command())
-async def message_handler(client: Client, message: Message):
+# All group messages pe filter
+@app.on_message(filters.group)
+async def all_messages_handler(client: Client, message: Message):
+    # Skip commands
+    if message.text and message.text.startswith('/'):
+        return
     await abuse_check_handler(client, message)
 # ====== Basic Config ======
 RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
