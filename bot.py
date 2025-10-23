@@ -559,50 +559,6 @@ async def log_member_update(client: Client, member_update: ChatMemberUpdated):
     except Exception as e:
         print(f"[मेंबर अपडेट लॉग] एरर: {e}")
 
-# ====== 24/7 Running Setup ======
-def start_pyrogram():
-    """Pyrogram को अलग थ्रेड में रन करें"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    async def pyro_main():
-        try:
-            await app.start()
-            bot_user = await app.get_me()
-            print(f"✅ बॉट स्टार्ट हो गया: {bot_user.username}")
-            
-            # Webhook setup
-            await setup_webhook()
-            
-            # Keep alive
-            while True:
-                await asyncio.sleep(300)  # हर 5 मिनट में हार्टबीट
-                print("❤️ बॉट अभी भी लाइव है...")
-                
-        except Exception as e:
-            print(f"❌ Pyrogram error: {e}")
-    
-    try:
-        loop.run_until_complete(pyro_main())
-    except KeyboardInterrupt:
-        print("🛑 बॉट स्टॉप किया जा रहा है...")
-    finally:
-        loop.run_until_complete(app.stop())
-        loop.close()
-
-def start_flask():
-    """Flapp app को रन करें"""
-    try:
-        flask_app.run(host="0.0.0.0", port=PORT, debug=False)
-    except Exception as e:
-        print(f"❌ Flask error: {e}")
-
 if __name__ == "__main__":
     print("🚀 ShieldX Bot Starting...")
-    
-    # Pyrogram को थ्रेड में रन करें
-    pyro_thread = threading.Thread(target=start_pyrogram, daemon=True)
-    pyro_thread.start()
-    
-    # Flask को मेन थ्रेड में रन करें
-    start_flask()
+    app.run()
