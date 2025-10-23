@@ -560,5 +560,7 @@ async def log_member_update(client: Client, member_update: ChatMemberUpdated):
         print(f"[मेंबर अपडेट लॉग] एरर: {e}")
 
 if __name__ == "__main__":
+    import time
+    time.sleep(10)  # 10 second wait
     print("🚀 ShieldX Bot Starting...")
     app.run()
