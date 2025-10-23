@@ -663,3 +663,9 @@ async def get_allowlist(chat_id: int) -> list:
     data = load_data()
     return data.get("allowlists", {}).get(str(chat_id), [])
 
+# JSON data file
+DATA_FILE = "data.json"
+# Memory storage
+user_warnings = {}
+chat_configs = {}
+allowlists = {}
