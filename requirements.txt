@@ -6,4 +6,5 @@ python-telegram-bot==22.5
 pymediainfo-pyrofork==6.0.2
 pyrofork==2.3.68
 gevent
+telegram
 
