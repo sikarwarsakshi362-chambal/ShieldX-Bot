@@ -4,6 +4,7 @@ import os
 import asyncio
 import threading
 from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton, Update
+from telegram.ext import Application
 from telegram.error import TelegramError
 from flask import Flask, request, jsonify
 from pyrogram import Client, filters, errors
