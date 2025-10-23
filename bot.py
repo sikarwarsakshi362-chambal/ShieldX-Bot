@@ -24,7 +24,7 @@ from abuse import abuse_check_handler
 app = Client("ShieldX-Bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 # Sirf non-command messages pe abuse filter lagao
-@app.on_message(filters.group & ~filters.command)
+@app.on_message(filters.group & ~filters.command())
 async def message_handler(client: Client, message: Message):
     await abuse_check_handler(client, message)
 # ====== Basic Config ======
