@@ -16,10 +16,19 @@ ABUSIVE_WORDS = [
     # English
     "fuck", "shit", "bitch", "asshole", "idiot", "stupid", "dumb", "loser",
     "nigger", "cunt", "faggot", "dick", "pussy", "slut", "moron", "jerk",
+    "bastard", "whore", "motherfucker", "douchebag", "scumbag", "retard",
+    "wanker", "prick", "twat", "arsehole", "bullshit", "damn", "hell",
+    "crap", "piss", "darn", "screw", "bloody", "bugger", "bollocks",
+    
     # Hindi / Hinglish
     "bhosdike", "chutiya", "madarchod", "randi", "gandu", "lund", "chodu", 
     "harami", "kamina", "kutte", "saala", "haramzada", "bhenchod", "betichod",
     "chod", "jhant", "loda", "lodu", "randi", "motha", "badmaash",
+    "behenchod", "bhosda", "gaand", "gaandu", "gand", "kutta", "kutti",
+    "lauda", "lawda", "maderchod", "madherchod", "randwa", "suar", "tatti",
+    "ullu", "chut", "choot", "chutia", "chutiye", "bhadwa", "bhosdi",
+    "bhosad", "bosdike", "land", "lound", "nautank", "pagli", "pagal",
+    "bewakoof", "gadha", "gadhe", "gadhi", "ullu", "murkh", "nalayak",
 ]
 
 ABUSE_RE = re.compile(r"\b(" + "|".join(re.escape(w) for w in ABUSIVE_WORDS) + r")\b", flags=re.IGNORECASE)
