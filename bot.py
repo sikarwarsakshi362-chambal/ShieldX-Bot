@@ -5,7 +5,6 @@ import requests
 import os
 from pyrogram import Client, filters  # Import 'filters' here
 from flask import Flask, request
-import telegram
 import asyncio
 from abuse import abuse_check_handler
 
