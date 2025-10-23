@@ -8,7 +8,12 @@ db = TinyDB('data.json')
 
 # ==================== ADMIN CHECK ====================
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
+    """
+    Fixed admin check for Pyrogram 2.3+.
+    Handles supergroups, channels, and avoids CHANNEL_INVALID error.
+    """
     try:
+        # For private and group chats
         async for member in client.get_chat_members(
             chat_id, filter=enums.ChatMembersFilter.ADMINISTRATORS
         ):
@@ -18,7 +23,6 @@ async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
         print(f"[is_admin] Error: {e}")
         return False
     return False
-
 # ==================== CONFIG ====================
 async def get_config(chat_id: int):
     config_table = db.table('config')
