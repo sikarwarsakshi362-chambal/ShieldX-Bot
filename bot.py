@@ -1,6 +1,7 @@
 import os
 from pyrogram import Client, filters
 from flask import Flask
+import threading
 
 # Config
 API_ID = os.getenv("API_ID")
@@ -22,6 +23,10 @@ def home():
 def health():
     return "✅ OK", 200
 
+@flask_app.route("/webhook", methods=["POST"])
+def webhook():
+    return "✅ Webhook OK", 200
+
 # Bot Commands
 @app.on_message(filters.command("start"))
 async def start(client, message):
@@ -35,7 +40,15 @@ async def ping(client, message):
 async def info(client, message):
     await message.reply("📊 **Bot Info:**\n• 24/7 Uptime\n• Render Deployment\n• Pyrogram + Flask")
 
+# Flask run in thread
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=PORT, debug=False)
+
 # Keep alive
 if __name__ == "__main__":
     print("🚀 Starting Test Bot...")
+    # Start Flask in background thread
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    # Start Pyrogram (main thread)
     app.run()
