@@ -473,7 +473,7 @@ async def delete_edited_messages(client: Client, message):
             pass
                 
     except Exception as e:
-        print(f"Edited message filter error: {e}"
+       print(f"Edited message filter error: {e}")
 
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
