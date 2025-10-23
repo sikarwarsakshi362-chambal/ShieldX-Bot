@@ -5,10 +5,6 @@ from config import DEFAULT_CONFIG, DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT
 
 # JSON data file
 DATA_FILE = "data.json"
-# Memory storage
-user_warnings = {}
-chat_configs = {}
-allowlists = {}
 
 # ==================== JSON HELPERS ====================
 def load_data():
