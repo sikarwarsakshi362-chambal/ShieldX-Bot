@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ShieldX Protector Bot — Webhook Ready Top Patch
 import os
-from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton, Updatem
+from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton, Update
 from flask import Flask, request
 from pyrogram import Client, filters
 from abuse import abuse_check_handler
