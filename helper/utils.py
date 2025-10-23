@@ -1,11 +1,37 @@
+import json
 import os
 from pyrogram import Client, enums
 from config import DEFAULT_CONFIG, DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT
-from tinydb import TinyDB, Query
 
-# TinyDB file
-db = TinyDB('data.json')
+# JSON data file
+DATA_FILE = "data.json"
+# Memory storage
+user_warnings = {}
+chat_configs = {}
+allowlists = {}
 
+# ==================== JSON HELPERS ====================
+def load_data():
+    """Load JSON data safely, initialize if missing or corrupt."""
+    if not os.path.exists(DATA_FILE):
+        default_data = {"warnings": {}, "punishments": {}, "allowlists": {}}
+        with open(DATA_FILE, "w") as f:
+            json.dump(default_data, f, indent=2)
+        return default_data
+    try:
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        print("❌ JSON corrupt — resetting to default.")
+        default_data = {"warnings": {}, "punishments": {}, "allowlists": {}}
+        with open(DATA_FILE, "w") as f:
+            json.dump(default_data, f, indent=2)
+        return default_data
+
+def save_data(data):
+    """Save JSON data safely."""
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 # ==================== ADMIN CHECK ====================
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
     """
@@ -25,55 +51,62 @@ async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
     return False
 # ==================== CONFIG ====================
 async def get_config(chat_id: int):
-    config_table = db.table('config')
-    config = config_table.get(Query().chat_id == chat_id)
-    if config:
-        return config.get('mode', 'warn'), config.get('limit', 3), config.get('penalty', 'mute')
-    return 'warn', 3, 'mute'
+    data = load_data()
+    cfg = data["punishments"].get(str(chat_id), {})
+    mode = cfg.get("mode", DEFAULT_CONFIG.get("mode", "warn"))
+    limit = cfg.get("limit", DEFAULT_CONFIG.get("limit", DEFAULT_WARNING_LIMIT))
+    penalty = cfg.get("penalty", DEFAULT_CONFIG.get("penalty", DEFAULT_PUNISHMENT))
+    return mode, limit, penalty
 
 async def update_config(chat_id: int, mode=None, limit=None, penalty=None):
-    config_table = db.table('config')
-    config = config_table.get(Query().chat_id == chat_id) or {'chat_id': chat_id}
-    if mode: config['mode'] = mode
-    if limit: config['limit'] = limit
-    if penalty: config['penalty'] = penalty
-    config_table.upsert(config, Query().chat_id == chat_id)
+    data = load_data()
+    chat_id = str(chat_id)
+    data.setdefault("punishments", {}).setdefault(chat_id, {})
+    if mode is not None:
+        data["punishments"][chat_id]["mode"] = mode
+    if limit is not None:
+        data["punishments"][chat_id]["limit"] = limit
+    if penalty is not None:
+        data["punishments"][chat_id]["penalty"] = penalty
+    save_data(data)
 
 # ==================== WARNINGS ====================
 async def increment_warning(chat_id: int, user_id: int) -> int:
-    warnings_table = db.table('warnings')
-    key = f"{chat_id}:{user_id}"
-    warning = warnings_table.get(Query().key == key) or {'key': key, 'count': 0}
-    warning['count'] += 1
-    warnings_table.upsert(warning, Query().key == key)
-    return warning['count']
+    data = load_data()
+    chat_id, user_id = str(chat_id), str(user_id)
+    data.setdefault("warnings", {}).setdefault(chat_id, {}).setdefault(user_id, {"count": 0})
+    data["warnings"][chat_id][user_id]["count"] += 1
+    count = data["warnings"][chat_id][user_id]["count"]
+    save_data(data)
+    return count
 
 async def reset_warnings(chat_id: int, user_id: int):
-    warnings_table = db.table('warnings')
-    key = f"{chat_id}:{user_id}"
-    warnings_table.remove(Query().key == key)
+    data = load_data()
+    chat_id, user_id = str(chat_id), str(user_id)
+    if chat_id in data["warnings"] and user_id in data["warnings"][chat_id]:
+        del data["warnings"][chat_id][user_id]
+    save_data(data)
 
 # ==================== ALLOWLIST ====================
 async def is_allowlisted(chat_id: int, user_id: int) -> bool:
-    allowlist_table = db.table('allowlists')
-    allowlist = allowlist_table.get(Query().chat_id == chat_id)
-    return allowlist and user_id in allowlist.get('users', [])
+    data = load_data()
+    return str(user_id) in data.get("allowlists", {}).get(str(chat_id), [])
 
 async def add_allowlist(chat_id: int, user_id: int):
-    allowlist_table = db.table('allowlists')
-    allowlist = allowlist_table.get(Query().chat_id == chat_id) or {'chat_id': chat_id, 'users': []}
-    if user_id not in allowlist['users']:
-        allowlist['users'].append(user_id)
-    allowlist_table.upsert(allowlist, Query().chat_id == chat_id)
+    data = load_data()
+    chat_id = str(chat_id)
+    data.setdefault("allowlists", {}).setdefault(chat_id, [])
+    if str(user_id) not in data["allowlists"][chat_id]:
+        data["allowlists"][chat_id].append(str(user_id))
+    save_data(data)
 
 async def remove_allowlist(chat_id: int, user_id: int):
-    allowlist_table = db.table('allowlists')
-    allowlist = allowlist_table.get(Query().chat_id == chat_id)
-    if allowlist and user_id in allowlist.get('users', []):
-        allowlist['users'].remove(user_id)
-        allowlist_table.upsert(allowlist, Query().chat_id == chat_id)
+    data = load_data()
+    chat_id = str(chat_id)
+    if chat_id in data.get("allowlists", {}):
+        data["allowlists"][chat_id] = [uid for uid in data["allowlists"][chat_id] if uid != str(user_id)]
+    save_data(data)
 
 async def get_allowlist(chat_id: int) -> list:
-    allowlist_table = db.table('allowlists')
-    allowlist = allowlist_table.get(Query().chat_id == chat_id)
-    return allowlist.get('users', []) if allowlist else []
+    data = load_data()
+    return data.get("allowlists", {}).get(str(chat_id), [])
