@@ -573,7 +573,7 @@ async def log_member_update(client: Client, member_update: ChatMemberUpdated):
         await client.send_message(BOT_LOG_ID, log_text)
     except Exception as e:
         print(f"[Member Update Log] Error: {e}")
-# Run the Pyrogram Client using the existing event loop from Gunicorn 
+
 app.run()
 
 
