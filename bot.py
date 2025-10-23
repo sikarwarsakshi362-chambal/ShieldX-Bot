@@ -6,7 +6,6 @@ import threading
 from flask import Flask, request, jsonify
 from pyrogram import Client, filters, errors
 from pyrogram.types import Message, ChatMemberUpdated, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
-from abuse import abuse_check_handler
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 from helper.utils import (
     is_admin,
@@ -19,6 +18,12 @@ from helper.utils import (
     remove_allowlist,
     get_allowlist
 )
+from abuse import abuse_check_handler
+
+# Sab messages pe abuse filter lagao
+@app.on_message(filters.group)
+async def message_handler(client: Client, message: Message):
+    await abuse_check_handler(client, message)
 
 # ====== Basic Config ======
 RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
@@ -442,6 +447,33 @@ async def check_bio(client: Client, message):
             await reset_warnings(chat_id, user_id)
     except Exception as e:
         print(f"Bio check error: {e}")
+
+# ====== Delete Only Edited Text Messages ======
+@app.on_edited_message(filters.group & filters.text)
+async def delete_edited_messages(client: Client, message):
+    try:
+        chat_id = message.chat.id
+        
+        # Delete only edited text messages
+        try:
+            await message.delete()
+            warning_text = (
+                f"🚨 **Edited Message Deleted** 🚨\n\n"
+                f"👤 **User:** {message.from_user.mention}\n"
+                f"❌ **Reason:** Message editing is not allowed\n\n"
+                f"📌 **Notice:** Please send correct message instead of editing."
+            )
+            warning_msg = await client.send_message(chat_id, warning_text)
+            
+            # 10 second baad warning message auto delete
+            await asyncio.sleep(10)
+            await warning_msg.delete()
+            
+        except errors.MessageDeleteForbidden:
+            pass
+                
+    except Exception as e:
+        print(f"Edited message filter error: {e}"
 
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
