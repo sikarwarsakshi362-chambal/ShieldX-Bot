@@ -1,4 +1,3 @@
-pyrogram==2.0.106
 tgcrypto==1.2.5
 Flask==3.0.3
 requests==2.32.3
@@ -7,4 +6,4 @@ python-telegram-bot==22.5
 pymediainfo-pyrofork==6.0.2
 pyrofork==2.3.68
 gevent
-telegram
+
