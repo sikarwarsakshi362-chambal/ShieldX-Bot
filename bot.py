@@ -448,12 +448,12 @@ async def check_bio(client: Client, message):
         print(f"Bio check error: {e}")
 
 # ====== Delete Only Edited Text Messages ======
-@app.on_edited_message(filters.group & filters.text)
+@app.on_edited_message(filters.group & filters.text & ~filters.service)
 async def delete_edited_messages(client: Client, message):
     try:
         chat_id = message.chat.id
         
-        # Delete only edited text messages
+        # Delete only edited text messages (reactions bypass)
         try:
             await message.delete()
             warning_text = (
@@ -472,8 +472,8 @@ async def delete_edited_messages(client: Client, message):
             pass
                 
     except Exception as e:
-       print(f"Edited message filter error: {e}")
-
+        print(f"Edited message filter error: {e}")
+        
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
     flask_app.run(host="0.0.0.0", port=PORT, debug=False)
