@@ -529,14 +529,24 @@ async def log_member_update(client: Client, member_update: ChatMemberUpdated):
     except Exception as e:
         print(f"[Member Update Log] Error: {e}")
         
-iif __name__ == "__main__":
-    import asyncio
+import threading
+import asyncio
+
+def start_pyrogram():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     async def main():
-        if not app.is_connected:
-            await app.start()
-            print(f"✅ Bot started as {app.me.username}")
-        await bot.set_webhook(WEBHOOK_URL)
-        print(f"✅ Webhook set: {WEBHOOK_URL}")
+        await app.start()
+        print(f"✅ Bot started as {app.me.username}")
+        await app.set_webhook(WEBHOOK_URL)
+    
+    loop.run_until_complete(main())
+    loop.run_forever()
 
-    asyncio.get_event_loop().run_until_complete(main())
+# Thread me run karo
+threading.Thread(target=start_pyrogram, daemon=True).start()
+
+# Flask app WSGI callable (Gunicorn ke liye)
+flask_app  # Gunicorn build command me 'gunicorn bot:flask_app' use karo
+
