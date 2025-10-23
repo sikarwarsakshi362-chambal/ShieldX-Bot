@@ -529,16 +529,14 @@ async def log_member_update(client: Client, member_update: ChatMemberUpdated):
     except Exception as e:
         print(f"[Member Update Log] Error: {e}")
         
-if if __name__ == "__main__":
+iif __name__ == "__main__":
     import asyncio
 
     async def main():
-        await app.start()
-        print(f"✅ Bot started as {app.me.username}")
+        if not app.is_connected:
+            await app.start()
+            print(f"✅ Bot started as {app.me.username}")
         await bot.set_webhook(WEBHOOK_URL)
         print(f"✅ Webhook set: {WEBHOOK_URL}")
 
     asyncio.get_event_loop().run_until_complete(main())
-
-
-
