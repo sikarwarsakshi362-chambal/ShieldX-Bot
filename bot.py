@@ -20,17 +20,16 @@ from helper.utils import (
 )
 from abuse import abuse_check_handler
 
+# ====== Pyrogram Setup ======
+app = Client("ShieldX-Bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
 # Sab messages pe abuse filter lagao
 @app.on_message(filters.group)
 async def message_handler(client: Client, message: Message):
     await abuse_check_handler(client, message)
-
 # ====== Basic Config ======
 RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
 PORT = int(os.getenv("PORT", 8080))
-
-# ====== Pyrogram Setup ======
-app = Client("ShieldX-Bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 # ====== Flask Server ======
 flask_app = Flask("ShieldXBot")
