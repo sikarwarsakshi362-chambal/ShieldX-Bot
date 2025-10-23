@@ -1,96 +1,64 @@
 # -*- coding: utf-8 -*-
-# ShieldX Protector Bot — Full Render & Gunicorn Ready Patch
-import threading
-import requests
+# ShieldX Protector Bot — Simplified Webhook Version
 import os
+import requests
 import telegram
-from pyrogram import Client, filters  # Import 'filters' here
 from flask import Flask, request
-import asyncio
+from pyrogram import Client
 from abuse import abuse_check_handler
+from config import API_ID, API_HASH, BOT_TOKEN
 
-# ====== Bot Config & Helpers ======
-from helper.utils import (
-    is_admin,
-    get_config,
-    update_config,
-    increment_warning,
-    reset_warnings,
-    is_allowlisted,
-    add_allowlist,
-    remove_allowlist,
-    get_allowlist
-)
-from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
+# ====== Basic Config ======
+RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
+WEBHOOK_URL = f"{RENDER_URL}/webhook"
+PORT = int(os.getenv("PORT", 8080))
 
-# ====== Environment & Config ======
-RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", f"{RENDER_URL}/webhook")
-PORT = int(os.environ.get("PORT", 8080))
-OWNER_ID = int(os.environ.get("OWNER_ID", 7959353330))
-
-# ====== Pyrogram Client ======
-app = Client(
-    "ShieldX-Bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN
-)
-
-@app.on_message()
-async def global_message_handler(client, message):
-    await abuse_check_handler(client, message)
-
-# ====== Telegram Bot for Webhook ======
+# ====== Telegram + Pyrogram Setup ======
 bot = telegram.Bot(token=BOT_TOKEN)
-
-async def set_webhook():
-    # Set webhook asynchronously
-    await bot.set_webhook(WEBHOOK_URL)
+app = Client("ShieldX-Bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 # ====== Flask Server ======
 flask_app = Flask("ShieldXBot")
 
 @flask_app.route("/health")
 def health():
-    return "✅ Bot is running"
+    return "✅ Bot is running", 200
 
 @flask_app.route("/webhook", methods=["POST"])
 def webhook():
     update = telegram.Update.de_json(request.get_json(force=True), bot)
+
     if update.message:
-        print(f"[Webhook] Message from {update.message.from_user.id}: {update.message.text}")
+        chat_id = update.message.chat.id
+        text = update.message.text
+
+        print(f"[Webhook] Message from {chat_id}: {text}")
+        try:
+            # Simple /start reply
+            if text == "/start":
+                bot.send_message(
+                    chat_id,
+                    "✨ Welcome to ShieldX Protector Bot 🛡️\n\n"
+                    "I'm active and secured via webhook 🚀"
+                )
+            else:
+                bot.send_message(chat_id, f"✅ Received: {text}")
+        except Exception as e:
+            print(f"⚠️ Send error: {e}")
+
     return "ok", 200
 
-def run_flask():
+# ====== Webhook Setup ======
+def set_webhook():
+    try:
+        res = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}")
+        print("✅ Webhook set:", res.json())
+    except Exception as e:
+        print("❌ Webhook error:", e)
+
+if __name__ == "__main__":
+    set_webhook()
     flask_app.run(host="0.0.0.0", port=PORT)
-
-# ====== Watchdog Task ======
-async def watchdog(client: Client, user_id: int):
-    while True:
-        try:
-            requests.get(f"{RENDER_URL}/health", timeout=600)
-            await client.send_message(user_id, "⏰ Bot is alive")
-        except Exception as e:
-            print(f"[Watchdog] Ping failed: {e}")
-        await asyncio.sleep(1800)  # 30 min
-
-# ====== Start the Pyrogram Client and Set Webhook ======
-async def start_bot():
-    # Start the Pyrogram client
-    await app.start()
-    print(f"✅ Bot started with username {app.me.username}")
-    
-    # Set the webhook after bot is started
-    await set_webhook()
-    print(f"✅ Webhook set to: {WEBHOOK_URL}")
-    
-    # Schedule the watchdog task
-    asyncio.create_task(watchdog(app, OWNER_ID))
-
-# ====== Start Flask in background thread ======
-threading.Thread(target=run_flask, daemon=True).start()
-print(f"✅ Flask server running on port {PORT}")
 
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
