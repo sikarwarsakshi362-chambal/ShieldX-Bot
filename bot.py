@@ -34,12 +34,10 @@ def webhook():
 
         print(f"[Webhook] Message from {chat_id}: {text}")
         try:
-            # Simple /start reply
             if text == "/start":
                 bot.send_message(
                     chat_id,
-                    "✨ Welcome to ShieldX Protector Bot 🛡️\n\n"
-                    "I'm active and secured via webhook 🚀"
+                    "✨ Welcome to ShieldX Protector Bot 🛡️\n\nI'm active and secured via webhook 🚀"
                 )
             else:
                 bot.send_message(chat_id, f"✅ Received: {text}")
@@ -47,18 +45,6 @@ def webhook():
             print(f"⚠️ Send error: {e}")
 
     return "ok", 200
-
-# ====== Webhook Setup ======
-def set_webhook():
-    try:
-        res = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}")
-        print("✅ Webhook set:", res.json())
-    except Exception as e:
-        print("❌ Webhook error:", e)
-
-if __name__ == "__main__":
-    set_webhook()
-    flask_app.run(host="0.0.0.0", port=PORT)
 
 # ====== TOP PATCH END ======
 @app.on_message(filters.command("start"))
@@ -542,7 +528,20 @@ async def log_member_update(client: Client, member_update: ChatMemberUpdated):
     except Exception as e:
         print(f"[Member Update Log] Error: {e}")
 
-app.run()
+if __name__ == "__main__":
+    import threading, asyncio
+
+    async def init_bot():
+        await app.start()
+        print(f"✅ Bot started as {app.me.username}")
+        await bot.set_webhook(WEBHOOK_URL)
+        print(f"✅ Webhook set: {WEBHOOK_URL}")
+
+    # Run Flask in background
+    threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=PORT), daemon=True).start()
+
+    # Start Pyrogram and Webhook
+    asyncio.run(init_bot())
 
 
 
