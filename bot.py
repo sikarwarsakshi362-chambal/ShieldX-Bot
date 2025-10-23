@@ -51,10 +51,6 @@ def webhook():
             chat_id = update.message.chat.id
             text = update.message.text
             print(f"[Webhook] Message from {chat_id}: {text}")
-
-            # Minimal /start reply (engagement-free)
-            if text == "/start":
-                bot.send_message(chat_id, "✨ ShieldX Bot is active via webhook 🛡️")
         return "ok", 200
     except Exception as e:
         print(f"Webhook error: {e}")
