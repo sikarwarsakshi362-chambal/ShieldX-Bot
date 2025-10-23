@@ -83,14 +83,14 @@ async def start_handler(client: Client, message):
             [InlineKeyboardButton("➕ Add Me to Your Group", url=add_url)],
             [
                 InlineKeyboardButton("🛠️ Support", url="https://t.me/FakeSupportX"),
-                InlineKeyboardButton("🗑️ Delete", callback_data="delete")
+                InlineKeyboardButton("🗑️ Delete", callback_data="Delete")
             ]
         ])
 
         await client.send_message(chat_id, text, reply_markup=kb)
     except Exception as e:
         print(f"Start handler error: {e}")
-
+        
 @app.on_message(filters.command("help"))
 async def help_handler(client: Client, message):
     try:
