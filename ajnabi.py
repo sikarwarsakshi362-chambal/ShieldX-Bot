@@ -457,8 +457,14 @@ async def delete_edited_messages(client: Client, message):
         print(f"- Text: {message.text}")
         print(f"- Media: {message.media}")
         print(f"- Service: {message.service}")
-        
+        print(f"- Reactions: {message.reactions}")
+
         # Agar reaction hai toh skip karo
+        if message.reactions:
+            print("❌ SKIP: Reaction detected")
+            return
+            
+        # Agar message empty text hai toh skip karo (probably a reaction)
         if not message.text or len(message.text.strip()) == 0:
             print("❌ SKIP: Empty text (probably reaction)")
             return
