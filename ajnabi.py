@@ -6,6 +6,44 @@ import threading
 from flask import Flask, request, jsonify
 from pyrogram import Client, filters, errors
 from pyrogram.types import Message, ChatMemberUpdated, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
+# -*- coding: utf-8 -*-
+# ShieldX Protector Bot — 24/7 Live on Render
+import os
+import asyncio
+import threading
+from flask import Flask, request, jsonify
+from pyrogram import Client, filters, errors
+from pyrogram.types import Message, ChatMemberUpdated, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
+
+# ====== CHANNEL ERROR FIX ======
+from pyrogram import utils
+
+def fix_peer_type(peer_id: int):
+    if peer_id < 0:
+        if str(peer_id).startswith("-100"):
+            return "channel"
+        else:
+            return "chat"
+    return "user"
+
+utils.get_peer_type = fix_peer_type
+# ====== ERROR FIX END ======
+
+from abuse import abuse_check_handler
+from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
+from helper.utils import (
+    is_admin,
+    get_config,
+    update_config,
+    increment_warning,
+    reset_warnings,
+    is_allowlisted,
+    add_allowlist,
+    remove_allowlist,
+    get_allowlist
+)
+
+# ... baaki tera existing code
 from abuse import abuse_check_handler
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 from helper.utils import (
@@ -22,7 +60,7 @@ from helper.utils import (
 
 # ====== Basic Config ======
 RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
-PORT = int(os.getenv("PORT", 8080))
+PORT = int(os.getenv("PORT", 10000))  # ✅ YAHI LINE SAHI HAI
 
 # ====== Pyrogram Setup ======
 app = Client("ShieldX-Bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -443,10 +481,74 @@ async def check_bio(client: Client, message):
     except Exception as e:
         print(f"Bio check error: {e}")
 
+# ====== NEW FEATURES ======
+from pyrogram import filters
+
+# Groups list command
+@app.on_message(filters.command("groups"))
+async def list_groups(client, message: Message):
+    """Saare groups list karega jahan bot hai"""
+    groups = []
+    async for dialog in client.get_dialogs():
+        if dialog.chat.type in ["group", "supergroup"]:
+            # Check if bot is member of this group
+            try:
+                member = await client.get_chat_member(dialog.chat.id, "me")
+                if member.status in ["member", "administrator", "creator"]:
+                    groups.append(f"**{dialog.chat.title}** - `{dialog.chat.id}`")
+            except:
+                continue
+    
+    if groups:
+        await message.reply_text("\n".join(groups[:15]))  # First 15 groups
+    else:
+        await message.reply_text("❌ Koi groups nahi mile")
+
+# Broadcast command (only for owner)
+@app.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
+async def broadcast_message(client, message: Message):
+    """Saare groups mein message bhejega"""
+    if len(message.command) < 2:
+        await message.reply_text("Usage: /broadcast your_message")
+        return
+    
+    text = " ".join(message.command[1:])
+    success = 0
+    failed = 0
+    
+    async for dialog in client.get_dialogs():
+        if dialog.chat.type in ["group", "supergroup"]:
+            try:
+                await client.send_message(dialog.chat.id, text)
+                success += 1
+            except:
+                failed += 1
+    
+    await message.reply_text(f"✅ Broadcast Complete!\nSuccess: {success}\nFailed: {failed}")
+
+# Group info command
+@app.on_message(filters.command("ginfo"))
+async def group_info(client, message: Message):
+    """Current group ki details batayega"""
+    try:
+        chat = await client.get_chat(message.chat.id)
+        info_text = f"""
+**Group Info:**
+**Name:** {chat.title}
+**ID:** `{chat.id}`
+**Type:** {chat.type}
+**Members:** {chat.members_count}
+**Username:** @{chat.username or 'N/A'}
+        """
+        await message.reply_text(info_text)
+    except Exception as e:
+        await message.reply_text(f"❌ Error: {e}")
+
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
     from waitress import serve
-    serve(flask_app, host="0.0.0.0", port=PORT)
+    port = int(os.environ.get("PORT", 10000))  # Render ka port use karo
+    serve(flask_app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
     print("🚀 ShieldX Bot Starting...")
