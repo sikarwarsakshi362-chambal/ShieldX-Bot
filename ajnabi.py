@@ -6,14 +6,6 @@ import threading
 from flask import Flask, request, jsonify
 from pyrogram import Client, filters, errors
 from pyrogram.types import Message, ChatMemberUpdated, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
-# -*- coding: utf-8 -*-
-# ShieldX Protector Bot — 24/7 Live on Render
-import os
-import asyncio
-import threading
-from flask import Flask, request, jsonify
-from pyrogram import Client, filters, errors
-from pyrogram.types import Message, ChatMemberUpdated, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
 
 # ====== CHANNEL ERROR FIX ======
 from pyrogram import utils
@@ -42,22 +34,6 @@ from helper.utils import (
     remove_allowlist,
     get_allowlist
 )
-
-# ... baaki tera existing code
-from abuse import abuse_check_handler
-from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
-from helper.utils import (
-    is_admin,
-    get_config,
-    update_config,
-    increment_warning,
-    reset_warnings,
-    is_allowlisted,
-    add_allowlist,
-    remove_allowlist,
-    get_allowlist
-)
-
 # ====== Basic Config ======
 RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
 PORT = int(os.getenv("PORT", 10000))  # ✅ YAHI LINE SAHI HAI
@@ -402,21 +378,19 @@ async def callback_handler(client: Client, callback_query):
         print(f"Callback handler error: {e}")
 
 @app.on_message(filters.group)
-async def check_bio(client: Client, message):
+async def check_bio(client, message):
+    # Pehle check karo ki required attributes hain ya nahi
+    if not message or not message.from_user or not message.chat:
+        return  # Agar data incomplete hai toh kuch na karo
+        
     try:
         chat_id = message.chat.id
         user_id = message.from_user.id
 
-        if await is_admin(client, chat_id, user_id) or await is_allowlisted(chat_id, user_id):
-            return
+        # ... baki ka tera existing check_bio code yahan rahega ...
 
-        try:
-            user = await client.get_chat(user_id)
-        except errors.FloodWait as e:
-            await asyncio.sleep(e.value)
-            user = await client.get_chat(user_id)
-        except Exception as ex:
-            print(f"[Bio Check Error] {ex}")
+    except Exception as e:
+        print(f"Bio check error: {e}")  # Yeh error ab nahi aayega
             return
 
         bio = user.bio or ""
@@ -506,7 +480,7 @@ async def list_groups(client, message: Message):
         await message.reply_text("❌ Koi groups nahi mile")
 
 # Broadcast command (only for owner)
-@app.on_message(filters.command("broadcast") & filters.user(int(os.getenv("OWNER_ID"))))
+@app.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
 async def broadcast_message(client, message: Message):
     """Saare groups mein message bhejega"""
     if len(message.command) < 2:
@@ -548,8 +522,12 @@ async def group_info(client, message: Message):
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
     from waitress import serve
-    port = int(os.environ.get("PORT", 10000))  # Render ka port use karo
+    port = int(os.environ.get("PORT", 10000))
     serve(flask_app, host="0.0.0.0", port=port)
+
+async def main():
+    await setup_webhook()  # ✅ YEH LINE ADD KARO
+    await app.run()
 
 if __name__ == "__main__":
     print("🚀 ShieldX Bot Starting...")
@@ -557,4 +535,4 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
     # Start Pyrogram
-    app.run()
+    asyncio.run(main())  # ✅ app.run() ki jagah asyncio.run(main())
