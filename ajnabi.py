@@ -6,21 +6,6 @@ import threading
 from flask import Flask, request, jsonify
 from pyrogram import Client, filters, errors
 from pyrogram.types import Message, ChatMemberUpdated, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton
-
-# ====== CHANNEL ERROR FIX ======
-from pyrogram import utils
-
-def fix_peer_type(peer_id: int):
-    if peer_id < 0:
-        if str(peer_id).startswith("-100"):
-            return "channel"
-        else:
-            return "chat"
-    return "user"
-
-utils.get_peer_type = fix_peer_type
-# ====== ERROR FIX END ======
-
 from abuse import abuse_check_handler
 from config import API_ID, API_HASH, BOT_TOKEN, URL_PATTERN
 from helper.utils import (
@@ -34,10 +19,10 @@ from helper.utils import (
     remove_allowlist,
     get_allowlist
 )
+
 # ====== Basic Config ======
 RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
-PORT = int(os.getenv("PORT", 10000))  # ✅ YAHI LINE SAHI HAI
-OWNER_ID = int(os.getenv("OWNER_ID"))  # ✅ YEH LINE ADD KARO
+PORT = int(os.getenv("PORT", 8080))
 
 # ====== Pyrogram Setup ======
 app = Client("ShieldX-Bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -49,7 +34,7 @@ flask_app = Flask("ShieldXBot")
 def home():
     return "🛡️ ShieldX Bot is Running - 24/7 Active 🚀"
 
-@flask_app.route("/healthz")  # /health se /healthz kar do
+@flask_app.route("/health")
 def health():
     return jsonify({"status": "✅ Bot is running"}), 200
 
@@ -66,8 +51,8 @@ def webhook():
 # ====== Webhook Setup Function ======
 async def setup_webhook():
     try:
-        await app.set_webhook(f"{RENDER_URL}/webhook")
-        print(f"✅ Webhook set to: {RENDER_URL}/webhook")
+        await bot.set_webhook(WEBHOOK_URL)
+        print(f"✅ Webhook set to: {WEBHOOK_URL}")
     except Exception as e:
         print(f"❌ Webhook setup failed: {e}")
 
@@ -378,10 +363,7 @@ async def callback_handler(client: Client, callback_query):
         print(f"Callback handler error: {e}")
 
 @app.on_message(filters.group)
-async def check_bio(client, message):
-    if not message or not message.from_user or not message.chat:
-        return
-        
+async def check_bio(client: Client, message):
     try:
         chat_id = message.chat.id
         user_id = message.from_user.id
@@ -460,91 +442,58 @@ async def check_bio(client, message):
             await reset_warnings(chat_id, user_id)
     except Exception as e:
         print(f"Bio check error: {e}")
+
 # Owner-only broadcast command
-@app.on_message(filters.command("broadcast"))
+@app.on_message(filters.private & filters.command("broadcast"))
 async def broadcast_handler(client: Client, message):
-    try:
-        # Only owner can use
-        if message.from_user.id != OWNER_ID:
-            return await message.reply_text("❌ Owner only command!")
-        
-        # Get broadcast text
-        if len(message.command) > 1:
-            text = message.text.split(maxsplit=1)[1]
-        elif message.reply_to_message:
-            text = message.reply_to_message.text or message.reply_to_message.caption or ""
-        else:
-            return await message.reply_text("❌ Usage: /broadcast <text> or reply to message")
+    # Only the configured OWNER_ID can use this command
+    if OWNER_ID <= 0 or message.from_user.id != OWNER_ID:
+        return
 
-        # Get all groups where bot is member
-        groups = []
-        async for dialog in client.get_dialogs():
-            if dialog.chat.type in ["group", "supergroup"]:
-                try:
-                    # Check if bot is member
-                    member = await client.get_chat_member(dialog.chat.id, "me")
-                    if member.status in ["member", "administrator", "creator"]:
-                        groups.append({
-                            "id": dialog.chat.id,
-                            "title": dialog.chat.title
-                        })
-                except:
-                    continue
+    # Extract broadcast text
+    if len(message.command) > 1:
+        text = message.text.split(maxsplit=1)[1]
+    elif message.reply_to_message:
+        text = message.reply_to_message.text or message.reply_to_message.caption or ""
+    else:
+        return await message.reply_text("Send /broadcast <text> or reply to a message.")
 
-        if not groups:
-            return await message.reply_text("❌ No groups found!")
+    # Fetch all known chats and send concurrently with small throttling
+    chat_ids = await get_all_chats()
+    if not chat_ids:
+        return await message.reply_text("No chats registered.")
 
-        # Start broadcast
-        status_msg = await message.reply_text(f"📤 Broadcasting to {len(groups)} groups...\n\n✅ 0 | ❌ 0")
-        
-        success = 0
-        failed = 0
-        
-        # Send to each group
-        for group in groups:
-            try:
-                await client.send_message(group["id"], text)
-                success += 1
-                
-                # Update status every 10 messages
-                if (success + failed) % 10 == 0:
-                    await status_msg.edit_text(f"📤 Broadcasting to {len(groups)} groups...\n\n✅ {success} | ❌ {failed}")
-                
-                await asyncio.sleep(1)  # Avoid flood
-                
-            except Exception as e:
-                failed += 1
-                print(f"Failed to send to {group['title']}: {e}")
+    await message.reply_text(f"Broadcasting to {len(chat_ids)} chats...")
 
-        # Final result
-        await status_msg.edit_text(f"✅ Broadcast Complete!\n\n📊 Results:\n✅ Success: {success}\n❌ Failed: {failed}\n📝 Total: {len(groups)}")
-        
-    except Exception as e:
-        await message.reply_text(f"❌ Broadcast Error: {str(e)}")
+    async def _send(cid: int):
+        try:
+            await client.send_message(cid, text)
+        except errors.ChatWriteForbidden:
+            # Bot removed or can't write; ignore
+            pass
+        except Exception:
+            # Any other send error; ignore to continue broadcast
+            pass
 
-# Get all chats function
-async def get_all_chats():
-    """Get all groups where bot is member"""
-    chats = []
-    async for dialog in client.get_dialogs():
-        if dialog.chat.type in ["group", "supergroup"]:
-            try:
-                member = await client.get_chat_member(dialog.chat.id, "me")
-                if member.status in ["member", "administrator", "creator"]:
-                    chats.append(dialog.chat.id)
-            except:
-                continue
-    return chats
+    # Limit concurrency to avoid hitting flood limits
+    sem = asyncio.Semaphore(10)
+
+    async def _worker(cid: int):
+        async with sem:
+            await _send(cid)
+            await asyncio.sleep(0.1)  # light spacing
+
+    await asyncio.gather(*(_worker(cid) for cid in chat_ids))
+    await message.reply_text("Broadcast finished.")
+
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
-    from waitress import serve
-    port = int(os.environ.get("PORT", 10000))
-    serve(flask_app, host="0.0.0.0", port=port)
+    flask_app.run(host="0.0.0.0", port=PORT, debug=False)
 
 if __name__ == "__main__":
     print("🚀 ShieldX Bot Starting...")
     # Start Flask in thread
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    # Start Pyrogram - DIRECT
+    # Start Pyrogram
     app.run()
