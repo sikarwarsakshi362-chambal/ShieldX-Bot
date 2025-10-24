@@ -61,6 +61,7 @@ from helper.utils import (
 # ====== Basic Config ======
 RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
 PORT = int(os.getenv("PORT", 10000))  # ✅ YAHI LINE SAHI HAI
+OWNER_ID = int(os.getenv("OWNER_ID"))  # ✅ YEH LINE ADD KARO
 
 # ====== Pyrogram Setup ======
 app = Client("ShieldX-Bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -72,7 +73,7 @@ flask_app = Flask("ShieldXBot")
 def home():
     return "🛡️ ShieldX Bot is Running - 24/7 Active 🚀"
 
-@flask_app.route("/health")
+@flask_app.route("/healthz")  # /health se /healthz kar do
 def health():
     return jsonify({"status": "✅ Bot is running"}), 200
 
@@ -505,7 +506,7 @@ async def list_groups(client, message: Message):
         await message.reply_text("❌ Koi groups nahi mile")
 
 # Broadcast command (only for owner)
-@app.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
+@app.on_message(filters.command("broadcast") & filters.user(int(os.getenv("OWNER_ID"))))
 async def broadcast_message(client, message: Message):
     """Saare groups mein message bhejega"""
     if len(message.command) < 2:
