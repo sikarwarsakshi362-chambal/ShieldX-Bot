@@ -442,48 +442,6 @@ async def check_bio(client: Client, message):
             await reset_warnings(chat_id, user_id)
     except Exception as e:
         print(f"Bio check error: {e}")
-
-@app.on_edited_message(filters.group & filters.text)
-async def delete_edited_messages(client: Client, message):
-    try:
-        # Simply delete ALL edited text messages
-        # Reactions technically "text messages" nahi hote
-        await message.delete()
-        print("✅ Edited text message deleted")
-        
-    except Exception as e:
-        print(f"❌ Delete error: {e}")
-
-# ====== ABUSE FILTER - HINDI/ENGLISH SLANG WORDS ======
-ABUSE_WORDS = [  # ✅ Square brackets - list
-    'mc', 'bc', 'bsdk', 'bhosdike', 'chutiya', 'gandu', 'madarchod', 'behenchod',
-    'lund', 'chut', 'gaand', 'kutta', 'kuttiya', 'randi', 'rand', 'saala', 'saali',
-    'lauda', 'lassun', 'gadha', 'ullu', 'namard', 'harami', 'kamina', 'bewakoof',
-    'gand', 'chod', 'bhosda', 'jhaat', 'jhat', 'lawde', 'lode', 'loda', 'fattu',
-    
-    # English abusive words  
-    'fuck', 'shit', 'asshole', 'bitch', 'bastard', 'dick', 'pussy', 'whore', 'slut',
-    'motherfucker', 'cunt', 'nigga', 'nigger', 'douchebag', 'faggot', 'retard',
-    'damn', 'hell', 'crap', 'bullshit', 'darn', 'bloody',
-    
-    # Short forms and slang
-    'stfu', 'gtfo', 'wtf', 'omg', 'lmfao', 'rofl', 'ffs', 'dfk', 'smd'
-]
-
-@app.on_message(filters.group & filters.text)
-async def abuse_filter(client, message):
-    try:
-        text = message.text.lower()
-        
-        # Exact word match karo, not just 'in' check
-        for word in ABUSE_WORDS:
-            if f' {word} ' in f' {text} ':
-                await message.delete()
-                print(f"✅ Abuse deleted: {word}")
-                break
-                
-    except Exception as e:
-        print(f"Abuse filter error: {e}")
         
 # Owner-only broadcast command
 @app.on_message(filters.private & filters.command("broadcast"))
