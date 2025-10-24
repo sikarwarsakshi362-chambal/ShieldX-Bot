@@ -379,18 +379,23 @@ async def callback_handler(client: Client, callback_query):
 
 @app.on_message(filters.group)
 async def check_bio(client, message):
-    # Pehle check karo ki required attributes hain ya nahi
     if not message or not message.from_user or not message.chat:
-        return  # Agar data incomplete hai toh kuch na karo
+        return
         
     try:
         chat_id = message.chat.id
         user_id = message.from_user.id
 
-        # ... baki ka tera existing check_bio code yahan rahega ...
+        if await is_admin(client, chat_id, user_id) or await is_allowlisted(chat_id, user_id):
+            return
 
-    except Exception as e:
-        print(f"Bio check error: {e}")  # Yeh error ab nahi aayega
+        try:
+            user = await client.get_chat(user_id)
+        except errors.FloodWait as e:
+            await asyncio.sleep(e.value)
+            user = await client.get_chat(user_id)
+        except Exception as ex:
+            print(f"[Bio Check Error] {ex}")
             return
 
         bio = user.bio or ""
@@ -455,7 +460,6 @@ async def check_bio(client, message):
             await reset_warnings(chat_id, user_id)
     except Exception as e:
         print(f"Bio check error: {e}")
-
 # ====== NEW FEATURES ======
 from pyrogram import filters
 
