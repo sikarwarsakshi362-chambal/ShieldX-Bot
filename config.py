@@ -4,7 +4,7 @@ import os
 # ======================= API & Bot Config =======================
 API_ID = 26250263
 API_HASH = "24b066ce7a9020dfbd69b4dc593993f1"
-BOT_TOKEN = "7981496411:AAHSjcC62nEmpkA2xXMUT4Tl1X3_9xFtZDE"
+BOT_TOKEN = "7981496411:AAGH_i58gW98oL88LNKyUDabcflN2BUOAjk"
 ADD_TO_GROUP_USERNAME = "shieldprotector_bot"
 SUPPORT_LINK = "https://t.me/+yGiJaSdHDoRlN2Zl"
 SESSION_FILE = "ShieldX.session"
