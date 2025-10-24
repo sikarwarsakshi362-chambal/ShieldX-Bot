@@ -31,7 +31,7 @@ async def all_messages_handler(client: Client, message: Message):
         return
     await abuse_check_handler(client, message)
 # ====== Basic Config ======
-RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-1.onrender.com")
+RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "https://shieldx-bot-hp53.onrender.com")
 PORT = int(os.getenv("PORT", 8080))
 
 # ====== Flask Server ======
