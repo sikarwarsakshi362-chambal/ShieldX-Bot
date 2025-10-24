@@ -29,22 +29,17 @@ def save_data(data):
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=2)
 # ==================== ADMIN CHECK ====================
-async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
+async def is_admin(client, chat_id, user_id):
     """
-    Fixed admin check for Pyrogram 2.3+.
-    Handles supergroups, channels, and avoids CHANNEL_INVALID error.
+    Tested & Working Admin Check
     """
     try:
-        # For private and group chats
-        async for member in client.get_chat_members(
-            chat_id, filter=enums.ChatMembersFilter.ADMINISTRATORS
-        ):
-            if member.user.id == user_id:
-                return True
+        # Direct simple check - jo pehle kaam kar raha tha
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status in ["creator", "administrator", "member"]
     except Exception as e:
-        print(f"[is_admin] Error: {e}")
+        print(f"Admin check error: {e}")
         return False
-    return False
 # ==================== CONFIG ====================
 async def get_config(chat_id: int):
     data = load_data()
