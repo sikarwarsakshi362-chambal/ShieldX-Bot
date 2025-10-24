@@ -486,6 +486,34 @@ async def broadcast_handler(client: Client, message):
     await asyncio.gather(*(_worker(cid) for cid in chat_ids))
     await message.reply_text("Broadcast finished.")
 
+# ====== EDITED MESSAGE DELETE ======
+@app.on_edited_message(filters.group)
+async def delete_edited_messages(client, message):
+    try:
+        # Owner ko exempt karo
+        if message.from_user.id == OWNER_ID:
+            return
+            
+        # Bot khud ko exempt karo  
+        if message.from_user.is_self:
+            return
+            
+        # Message delete karo
+        await message.delete()
+        
+        # Notification bhejo
+        user_mention = f"[{message.from_user.first_name}](tg://user?id={message.from_user.id})"
+        notification = await message.reply_text(
+            f"{user_mention} 𝗷𝘂𝘀𝘁 𝗲𝗱𝗶𝘁 𝗮 𝗺𝗲𝘀𝘀𝗮𝗴𝗲. 𝗜 𝗱𝗲𝗹𝗲𝘁𝗲 𝗵𝗶𝘀 𝗲𝗱𝗶𝘁𝗲𝗱 𝗺𝗲𝘀𝘀𝗮𝗴𝗲."
+        )
+        
+        # Notification ko 5 second baad delete karo
+        await asyncio.sleep(5)
+        await notification.delete()
+        
+    except Exception as e:
+        print(f"Edit delete error: {e}")
+
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
     flask_app.run(host="0.0.0.0", port=PORT, debug=False)
