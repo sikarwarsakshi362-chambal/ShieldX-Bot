@@ -51,8 +51,8 @@ def webhook():
 # ====== Webhook Setup Function ======
 async def setup_webhook():
     try:
-        await bot.set_webhook(WEBHOOK_URL)
-        print(f"✅ Webhook set to: {WEBHOOK_URL}")
+        await app.set_webhook(f"{RENDER_URL}/webhook")
+        print(f"✅ Webhook set to: {RENDER_URL}/webhook")
     except Exception as e:
         print(f"❌ Webhook setup failed: {e}")
 
@@ -445,7 +445,8 @@ async def check_bio(client: Client, message):
 
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
-    flask_app.run(host="0.0.0.0", port=PORT, debug=False)
+    from waitress import serve
+    serve(flask_app, host="0.0.0.0", port=PORT)
 
 if __name__ == "__main__":
     print("🚀 ShieldX Bot Starting...")
