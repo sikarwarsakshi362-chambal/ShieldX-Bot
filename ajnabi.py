@@ -443,35 +443,36 @@ async def check_bio(client: Client, message):
     except Exception as e:
         print(f"Bio check error: {e}")
 
-# ====== EDITED TEXT MESSAGE DELETE ======
+# ====== Delete Only Edited Text Messages ======
 @app.on_edited_message(filters.group & filters.text)
-async def delete_edited_text_messages(client, message):
+async def delete_edited_messages(client: Client, message):
     try:
-        # Owner ko exempt karo
-        if message.from_user.id == OWNER_ID:
-            return
+        chat_id = message.chat.id
+        
+        # Check if it's a service message (reactions, etc.) - yeh line IMPORTANT hai
+        if message.service:
+            return  # Service messages ko skip karo
             
-        # Bot khud ko exempt karo  
-        if message.from_user.is_self:
-            return
-        
-        # Message delete karo
-        await message.delete()
-        
-        # Success notification
-        user_mention = f"[{message.from_user.first_name}](tg://user?id={message.from_user.id})"
-        notification = await message.reply_text(
-            f"✏️ {user_mention} ka edited text delete kiya gaya."
-        )
-        
-        # Notification ko 3 second baad delete karo
-        await asyncio.sleep(3)
-        await notification.delete()
-        
+        # Delete only edited text messages
+        try:
+            await message.delete()
+            warning_text = (
+                f"🚨 **Edited Message Deleted** 🚨\n\n"
+                f"👤 **User:** {message.from_user.mention}\n"
+                f"❌ **Reason:** Message editing is not allowed\n\n"
+                f"📌 **Notice:** Please send correct message instead of editing."
+            )
+            warning_msg = await client.send_message(chat_id, warning_text)
+            
+            # 10 second baad warning message auto delete
+            await asyncio.sleep(10)
+            await warning_msg.delete()
+            
+        except errors.MessageDeleteForbidden:
+            pass
+                
     except Exception as e:
-        # Error handle karo silently
-        pass
-
+        print(f"Edited message filter error: {e}")
 # Owner-only broadcast command
 @app.on_message(filters.private & filters.command("broadcast"))
 async def broadcast_handler(client: Client, message):
