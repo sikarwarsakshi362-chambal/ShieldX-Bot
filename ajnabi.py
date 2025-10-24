@@ -529,14 +529,10 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     serve(flask_app, host="0.0.0.0", port=port)
 
-async def main():
-    await setup_webhook()  # ✅ YEH LINE ADD KARO
-    await app.run()
-
 if __name__ == "__main__":
     print("🚀 ShieldX Bot Starting...")
     # Start Flask in thread
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    # Start Pyrogram
-    asyncio.run(main())  # ✅ app.run() ki jagah asyncio.run(main())
+    # Start Pyrogram - DIRECT
+    app.run()
