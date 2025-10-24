@@ -392,23 +392,25 @@ async def check_bio(client: Client, message):
         mention = f"[{full_name}](tg://user?id={user_id})"
 
         if URL_PATTERN.search(bio):
-            try:
-                await message.delete()
-            except errors.MessageDeleteForbidden:
-                await message.reply_text("Please grant me delete permission.")
+    try:
+        await message.delete()
+    except errors.MessageDeleteForbidden:
+        await message.reply_text("Please grant me delete permission.")
 
-            mode, limit, penalty = await get_config(chat_id)
-
-            if mode == "warn":
-                count = await increment_warning(chat_id, user_id)
-                warning_text = (
-                    "🚨🚨 **⚠️ Warning Issued ⚠️** 🚨🚨\n\n"
-                    f"👤 **User:** {mention} `[{user_id}]`\n"
-                    "❌ **Reason:** URL detected in bio\n"
-                    f"⚠️ **Warning:** {count}/{limit}\n\n"
-                    "🛑 **Notice:** Please remove any links from your bio immediately.\n\n"
-                    "📌 Repeated violations may lead to mute/ban."
-                )
+    # YAHAN SE TERA EXISTING CODE CONTINUE KARO
+    mode, limit, penalty = await get_config(chat_id)
+    
+    if mode == "warn":
+        count = await increment_warning(chat_id, user_id)
+        warning_text = (
+            "🚨🚨 **⚠️ Warning Issued ⚠️** 🚨🚨\n\n"
+            f"👤 **User:** {mention} `[{user_id}]`\n"
+            "❌ **Reason:** URL detected in bio\n"
+            f"⚠️ **Warning:** {count}/{limit}\n\n"
+            "🛑 **Notice:** Please remove any links from your bio immediately.\n\n"
+            "📌 Repeated violations may lead to mute/ban."
+        )
+        # ... aur baki ka tera existing code
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton("❌ Cancel Warning", callback_data=f"cancel_warn_{user_id}"),
