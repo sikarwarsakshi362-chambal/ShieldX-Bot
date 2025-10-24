@@ -447,24 +447,35 @@ async def check_bio(client: Client, message):
 @app.on_edited_message(filters.group & filters.text)
 async def delete_edited_messages(client: Client, message):
     try:
+        # REACTIONS CHECK - Most important
+        # Agar message mein koi text change nahi hua, toh react hai
+        if not message.edit_date:
+            return
+            
+        # Agar message empty hai ya sirf reaction hai
+        if not message.text or message.text.strip() == "":
+            return
+            
+        # Final check - agar original message aur edited message same hai
+        try:
+            # Yeh react messages ko pakad lega
+            if len(message.text) < 2:  # Reacts usually have very short "text"
+                return
+        except:
+            pass
+            
+        # Abhi tak return nahi hua toh actual edited text message hai
         chat_id = message.chat.id
         
-        # Check if it's a service message (reactions, etc.) - yeh line IMPORTANT hai
-        if message.service:
-            return  # Service messages ko skip karo
-            
-        # Delete only edited text messages
         try:
             await message.delete()
             warning_text = (
                 f"🚨 **Edited Message Deleted** 🚨\n\n"
                 f"👤 **User:** {message.from_user.mention}\n"
-                f"❌ **Reason:** Message editing is not allowed\n\n"
-                f"📌 **Notice:** Please send correct message instead of editing."
+                f"❌ **Reason:** Message editing is not allowed"
             )
             warning_msg = await client.send_message(chat_id, warning_text)
             
-            # 10 second baad warning message auto delete
             await asyncio.sleep(10)
             await warning_msg.delete()
             
@@ -473,6 +484,7 @@ async def delete_edited_messages(client: Client, message):
                 
     except Exception as e:
         print(f"Edited message filter error: {e}")
+        
 # Owner-only broadcast command
 @app.on_message(filters.private & filters.command("broadcast"))
 async def broadcast_handler(client: Client, message):
