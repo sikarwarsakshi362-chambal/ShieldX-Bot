@@ -447,31 +447,22 @@ async def check_bio(client: Client, message):
 @app.on_edited_message(filters.group)
 async def delete_edited_messages(client: Client, message):
     try:
-        print(f"🔍 EDIT DETECTED: {message.from_user.first_name} | Type: {message.media} | Text: {message.text}")
+        print(f"🔍 EDIT DETECTED: {message.from_user.first_name} | Text: {message.text}")
         
-        # Debug info
-        print(f"Message Details:")
-        print(f"- User: {message.from_user.id}")
-        print(f"- Chat: {message.chat.id}") 
-        print(f"- Date: {message.edit_date}")
-        print(f"- Text: {message.text}")
-        print(f"- Media: {message.media}")
-        print(f"- Service: {message.service}")
-        print(f"- Reactions: {message.reactions}")
-
-        # Agar reaction hai toh skip karo
-        if message.reactions:
-            print("❌ SKIP: Reaction detected")
+        # REACTION DETECTION - IMPROVED
+        # Agar message ka text change nahi hua, toh reaction hai
+        if message.text == message.old_text:
+            print("❌ SKIP: Text same hai (reaction)")
             return
             
-        # Agar message empty text hai toh skip karo (probably a reaction)
-        if not message.text or len(message.text.strip()) == 0:
-            print("❌ SKIP: Empty text (probably reaction)")
+        # Agar reactions present hain toh skip
+        if hasattr(message, 'reactions') and message.reactions:
+            print("❌ SKIP: Reactions present")
             return
             
-        # Agar media message hai toh skip karo  
-        if message.media:
-            print("❌ SKIP: Media message")
+        # Agar media hai ya service message hai
+        if message.media or message.service:
+            print("❌ SKIP: Media/Service message")
             return
             
         # Actual text edit hai
