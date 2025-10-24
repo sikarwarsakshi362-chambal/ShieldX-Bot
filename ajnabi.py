@@ -477,6 +477,54 @@ async def delete_edited_messages(client: Client, message):
                 
     except Exception as e:
         print(f"❌ UNKNOWN ERROR: {e}")
+
+# ====== ABUSE FILTER - HINDI/ENGLISH SLANG WORDS ======
+ABUSE_WORDS = {
+    # Hindi abusive words
+    'mc', 'bc', 'bsdk', 'bhosdike', 'chutiya', 'gandu', 'madarchod', 'behenchod',
+    'lund', 'chut', 'gaand', 'kutta', 'kuttiya', 'randi', 'rand', 'saala', 'saali',
+    'lauda', 'lassun', 'gadha', 'ullu', 'namard', 'harami', 'kamina', 'bewakoof',
+    'gand', 'chod', 'bhosda', 'jhaat', 'jhat', 'lawde', 'lode', 'loda', 'fattu',
+    
+    # English abusive words  
+    'fuck', 'shit', 'asshole', 'bitch', 'bastard', 'dick', 'pussy', 'whore', 'slut',
+    'motherfucker', 'cunt', 'nigga', 'nigger', 'douchebag', 'faggot', 'retard',
+    'damn', 'hell', 'crap', 'bullshit', 'darn', 'bloody',
+    
+    # Short forms and slang
+    'stfu', 'gtfo', 'wtf', 'omg', 'lmfao', 'rofl', 'ffs', 'dfk', 'smd'
+}
+
+@app.on_message(filters.group & filters.text)
+async def abuse_filter(client, message):
+    try:
+        # Skip if admin or bot itself
+        if await is_admin(client, message.chat.id, message.from_user.id):
+            return
+        if message.from_user.is_self:
+            return
+            
+        text = message.text.lower()
+        
+        # Check for abusive words
+        for word in ABUSE_WORDS:
+            if word in text:
+                await message.delete()
+                
+                # Send warning
+                warning_msg = await message.reply_text(
+                    f"🚫 **Abusive Language Detected!**\n\n"
+                    f"👤 {message.from_user.mention} - Please maintain group decorum.\n"
+                    f"❌ Your message contained inappropriate words."
+                )
+                
+                # Auto delete warning after 5 seconds
+                await asyncio.sleep(5)
+                await warning_msg.delete()
+                break
+                
+    except Exception as e:
+        print(f"Abuse filter error: {e}")
         
 # Owner-only broadcast command
 @app.on_message(filters.private & filters.command("broadcast"))
