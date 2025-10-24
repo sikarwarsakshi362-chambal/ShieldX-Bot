@@ -443,18 +443,19 @@ async def check_bio(client: Client, message):
     except Exception as e:
         print(f"Bio check error: {e}")
 
-# ====== DEBUG: Delete Only Edited Text Messages ======
 @app.on_edited_message(filters.group & filters.text)
 async def delete_edited_messages(client: Client, message):
     try:
-        # Only delete if user edited THEIR OWN message
-        if message.from_user and message.from_user.id == message.from_user.id:
-            await message.delete()
-            print("✅ OWN edited message deleted")
+        # Simply delete ALL edited text messages
+        # Reactions technically "text messages" nahi hote
+        await message.delete()
+        print("✅ Edited text message deleted")
+        
+    except Exception as e:
+        print(f"❌ Delete error: {e}")
 
 # ====== ABUSE FILTER - HINDI/ENGLISH SLANG WORDS ======
-ABUSE_WORDS = {
-    # Hindi abusive words
+ABUSE_WORDS = [  # ✅ Square brackets - list
     'mc', 'bc', 'bsdk', 'bhosdike', 'chutiya', 'gandu', 'madarchod', 'behenchod',
     'lund', 'chut', 'gaand', 'kutta', 'kuttiya', 'randi', 'rand', 'saala', 'saali',
     'lauda', 'lassun', 'gadha', 'ullu', 'namard', 'harami', 'kamina', 'bewakoof',
@@ -467,7 +468,7 @@ ABUSE_WORDS = {
     
     # Short forms and slang
     'stfu', 'gtfo', 'wtf', 'omg', 'lmfao', 'rofl', 'ffs', 'dfk', 'smd'
-}
+]
 
 @app.on_message(filters.group & filters.text)
 async def abuse_filter(client, message):
