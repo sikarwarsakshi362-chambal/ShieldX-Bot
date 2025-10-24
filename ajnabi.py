@@ -444,39 +444,13 @@ async def check_bio(client: Client, message):
         print(f"Bio check error: {e}")
 
 # ====== DEBUG: Delete Only Edited Text Messages ======
-@app.on_edited_message(filters.group)
+@app.on_edited_message(filters.group & filters.text)
 async def delete_edited_messages(client: Client, message):
     try:
-        print(f"🔍 EDIT DETECTED: {message.from_user.first_name} | Text: {message.text}")
-        
-        # REACTION DETECTION - IMPROVED
-        # Agar message ka text change nahi hua, toh reaction hai
-        if message.text == message.old_text:
-            print("❌ SKIP: Text same hai (reaction)")
-            return
-            
-        # Agar reactions present hain toh skip
-        if hasattr(message, 'reactions') and message.reactions:
-            print("❌ SKIP: Reactions present")
-            return
-            
-        # Agar media hai ya service message hai
-        if message.media or message.service:
-            print("❌ SKIP: Media/Service message")
-            return
-            
-        # Actual text edit hai
-        print("✅ PROCESS: Actual text edit - deleting...")
-        
-        try:
+        # Only delete if user edited THEIR OWN message
+        if message.from_user and message.from_user.id == message.from_user.id:
             await message.delete()
-            print("✅ DELETE SUCCESS")
-            
-        except Exception as e:
-            print(f"❌ DELETE FAILED: {e}")
-                
-    except Exception as e:
-        print(f"❌ UNKNOWN ERROR: {e}")
+            print("✅ OWN edited message deleted")
 
 # ====== ABUSE FILTER - HINDI/ENGLISH SLANG WORDS ======
 ABUSE_WORDS = {
@@ -498,29 +472,13 @@ ABUSE_WORDS = {
 @app.on_message(filters.group & filters.text)
 async def abuse_filter(client, message):
     try:
-        # Skip if admin or bot itself
-        if await is_admin(client, message.chat.id, message.from_user.id):
-            return
-        if message.from_user.is_self:
-            return
-            
         text = message.text.lower()
         
-        # Check for abusive words
+        # Exact word match karo, not just 'in' check
         for word in ABUSE_WORDS:
-            if word in text:
+            if f' {word} ' in f' {text} ':
                 await message.delete()
-                
-                # Send warning
-                warning_msg = await message.reply_text(
-                    f"🚫 **Abusive Language Detected!**\n\n"
-                    f"👤 {message.from_user.mention} - Please maintain group decorum.\n"
-                    f"❌ Your message contained inappropriate words."
-                )
-                
-                # Auto delete warning after 5 seconds
-                await asyncio.sleep(5)
-                await warning_msg.delete()
+                print(f"✅ Abuse deleted: {word}")
                 break
                 
     except Exception as e:
