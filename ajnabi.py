@@ -460,69 +460,81 @@ async def check_bio(client, message):
             await reset_warnings(chat_id, user_id)
     except Exception as e:
         print(f"Bio check error: {e}")
-# ====== NEW FEATURES ======
-from pyrogram import filters
+# Owner-only broadcast command
+@app.on_message(filters.command("broadcast"))
+async def broadcast_handler(client: Client, message):
+    try:
+        # Only owner can use
+        if message.from_user.id != OWNER_ID:
+            return await message.reply_text("❌ Owner only command!")
+        
+        # Get broadcast text
+        if len(message.command) > 1:
+            text = message.text.split(maxsplit=1)[1]
+        elif message.reply_to_message:
+            text = message.reply_to_message.text or message.reply_to_message.caption or ""
+        else:
+            return await message.reply_text("❌ Usage: /broadcast <text> or reply to message")
 
-# Groups list command
-@app.on_message(filters.command("groups"))
-async def list_groups(client, message: Message):
-    """Saare groups list karega jahan bot hai"""
-    groups = []
+        # Get all groups where bot is member
+        groups = []
+        async for dialog in client.get_dialogs():
+            if dialog.chat.type in ["group", "supergroup"]:
+                try:
+                    # Check if bot is member
+                    member = await client.get_chat_member(dialog.chat.id, "me")
+                    if member.status in ["member", "administrator", "creator"]:
+                        groups.append({
+                            "id": dialog.chat.id,
+                            "title": dialog.chat.title
+                        })
+                except:
+                    continue
+
+        if not groups:
+            return await message.reply_text("❌ No groups found!")
+
+        # Start broadcast
+        status_msg = await message.reply_text(f"📤 Broadcasting to {len(groups)} groups...\n\n✅ 0 | ❌ 0")
+        
+        success = 0
+        failed = 0
+        
+        # Send to each group
+        for group in groups:
+            try:
+                await client.send_message(group["id"], text)
+                success += 1
+                
+                # Update status every 10 messages
+                if (success + failed) % 10 == 0:
+                    await status_msg.edit_text(f"📤 Broadcasting to {len(groups)} groups...\n\n✅ {success} | ❌ {failed}")
+                
+                await asyncio.sleep(1)  # Avoid flood
+                
+            except Exception as e:
+                failed += 1
+                print(f"Failed to send to {group['title']}: {e}")
+
+        # Final result
+        await status_msg.edit_text(f"✅ Broadcast Complete!\n\n📊 Results:\n✅ Success: {success}\n❌ Failed: {failed}\n📝 Total: {len(groups)}")
+        
+    except Exception as e:
+        await message.reply_text(f"❌ Broadcast Error: {str(e)}")
+
+# Get all chats function
+async def get_all_chats():
+    """Get all groups where bot is member"""
+    chats = []
     async for dialog in client.get_dialogs():
         if dialog.chat.type in ["group", "supergroup"]:
-            # Check if bot is member of this group
             try:
                 member = await client.get_chat_member(dialog.chat.id, "me")
                 if member.status in ["member", "administrator", "creator"]:
-                    groups.append(f"**{dialog.chat.title}** - `{dialog.chat.id}`")
+                    chats.append(dialog.chat.id)
             except:
                 continue
-    
-    if groups:
-        await message.reply_text("\n".join(groups[:15]))  # First 15 groups
-    else:
-        await message.reply_text("❌ Koi groups nahi mile")
-
-# Broadcast command (only for owner)
-@app.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
-async def broadcast_message(client, message: Message):
-    """Saare groups mein message bhejega"""
-    if len(message.command) < 2:
-        await message.reply_text("Usage: /broadcast your_message")
-        return
-    
-    text = " ".join(message.command[1:])
-    success = 0
-    failed = 0
-    
-    async for dialog in client.get_dialogs():
-        if dialog.chat.type in ["group", "supergroup"]:
-            try:
-                await client.send_message(dialog.chat.id, text)
-                success += 1
-            except:
-                failed += 1
-    
-    await message.reply_text(f"✅ Broadcast Complete!\nSuccess: {success}\nFailed: {failed}")
-
-# Group info command
-@app.on_message(filters.command("ginfo"))
-async def group_info(client, message: Message):
-    """Current group ki details batayega"""
-    try:
-        chat = await client.get_chat(message.chat.id)
-        info_text = f"""
-**Group Info:**
-**Name:** {chat.title}
-**ID:** `{chat.id}`
-**Type:** {chat.type}
-**Members:** {chat.members_count}
-**Username:** @{chat.username or 'N/A'}
-        """
-        await message.reply_text(info_text)
-    except Exception as e:
-        await message.reply_text(f"❌ Error: {e}")
-
+    return chats
 # ====== 24/7 RUNNING SETUP ======
 def run_flask():
     from waitress import serve
