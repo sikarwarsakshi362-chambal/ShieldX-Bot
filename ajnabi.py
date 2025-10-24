@@ -443,47 +443,43 @@ async def check_bio(client: Client, message):
     except Exception as e:
         print(f"Bio check error: {e}")
 
-# ====== Delete Only Edited Text Messages ======
-@app.on_edited_message(filters.group & filters.text)
+# ====== DEBUG: Delete Only Edited Text Messages ======
+@app.on_edited_message(filters.group)
 async def delete_edited_messages(client: Client, message):
     try:
-        # REACTIONS CHECK - Most important
-        # Agar message mein koi text change nahi hua, toh react hai
-        if not message.edit_date:
+        print(f"🔍 EDIT DETECTED: {message.from_user.first_name} | Type: {message.media} | Text: {message.text}")
+        
+        # Debug info
+        print(f"Message Details:")
+        print(f"- User: {message.from_user.id}")
+        print(f"- Chat: {message.chat.id}") 
+        print(f"- Date: {message.edit_date}")
+        print(f"- Text: {message.text}")
+        print(f"- Media: {message.media}")
+        print(f"- Service: {message.service}")
+        
+        # Agar reaction hai toh skip karo
+        if not message.text or len(message.text.strip()) == 0:
+            print("❌ SKIP: Empty text (probably reaction)")
             return
             
-        # Agar message empty hai ya sirf reaction hai
-        if not message.text or message.text.strip() == "":
+        # Agar media message hai toh skip karo  
+        if message.media:
+            print("❌ SKIP: Media message")
             return
             
-        # Final check - agar original message aur edited message same hai
-        try:
-            # Yeh react messages ko pakad lega
-            if len(message.text) < 2:  # Reacts usually have very short "text"
-                return
-        except:
-            pass
-            
-        # Abhi tak return nahi hua toh actual edited text message hai
-        chat_id = message.chat.id
+        # Actual text edit hai
+        print("✅ PROCESS: Actual text edit - deleting...")
         
         try:
             await message.delete()
-            warning_text = (
-                f"🚨 **Edited Message Deleted** 🚨\n\n"
-                f"👤 **User:** {message.from_user.mention}\n"
-                f"❌ **Reason:** Message editing is not allowed"
-            )
-            warning_msg = await client.send_message(chat_id, warning_text)
+            print("✅ DELETE SUCCESS")
             
-            await asyncio.sleep(10)
-            await warning_msg.delete()
-            
-        except errors.MessageDeleteForbidden:
-            pass
+        except Exception as e:
+            print(f"❌ DELETE FAILED: {e}")
                 
     except Exception as e:
-        print(f"Edited message filter error: {e}")
+        print(f"❌ UNKNOWN ERROR: {e}")
         
 # Owner-only broadcast command
 @app.on_message(filters.private & filters.command("broadcast"))
