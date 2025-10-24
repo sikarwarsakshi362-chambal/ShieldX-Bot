@@ -2,9 +2,11 @@ import re
 import os
 
 # ======================= API & Bot Config =======================
-API_ID = 26250263
-API_HASH = "24b066ce7a9020dfbd69b4dc593993f1"
-BOT_TOKEN = "7981496411:AAGH_i58gW98oL88LNKyUDabcflN2BUOAjk"
+# Get environment variables (required for Heroku / Render / VPS)
+API_ID = int(os.environ.get("API_ID", "12345678"))  # Your Telegram API ID
+API_HASH = os.environ.get("API_HASH", "12345678abcd")  # Your Telegram API Hash
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "7267436522:XXXXXXXXXXXXXXXXXX")  # Your Bot Token# Owner ID for privileged commands like /broadcast
+OWNER_ID = int(os.environ.get("OWNER_ID", "0"))  # Set this to your Telegram user ID
 ADD_TO_GROUP_USERNAME = "shieldprotector_bot"
 SUPPORT_LINK = "https://t.me/+yGiJaSdHDoRlN2Zl"
 SESSION_FILE = "ShieldX.session"
